@@ -52,12 +52,12 @@ class Gyroscope:
         except ValueError:
             pass
         
-    def RunGyro():
+    def RunGyro(self):
         try:
             while True:
-                if ser.in_waiting > 0:
-                    line = ser.readline().decode('utf-8')
-                    process_data(line)
+                if self.ser.in_waiting > 0:
+                    line = self.ser.readline().decode('utf-8')
+                    self.process_data(line)
 
                 if msvcrt.kbhit():
                     key = msvcrt.getch()

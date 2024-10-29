@@ -41,6 +41,6 @@ class Send_Control_Data:
                     running = False
 
     def start_server(self):
-        asyncio.run(send_joystick_data())
+        asyncio.run(self.receive_joystick_data())
 
 
