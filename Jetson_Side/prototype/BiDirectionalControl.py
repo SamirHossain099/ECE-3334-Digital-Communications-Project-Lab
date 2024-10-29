@@ -6,42 +6,6 @@ import board
 import time
 from adafruit_pca9685 import PCA9685
 import math
-# #echo example
-# async def echo(websocket, path):
-#     print("WebSocket server started on ws://0.0.0.0:8765")
-#     while True:
-#         try:
-#             message = await websocket.recv()
-#             print(f"Received: {message}")
-#             await websocket.send(f"Echo: {message}")
-#             sys.stdout.flush()
-#         except websockets.ConnectionClosed:
-#             print("Connection Closed")
-#             break   
-
-# start_server = websockets.serve(echo, "0.0.0.0", 8765)
-# asyncio.get_event_loop().run_until_complete(start_server)
-# asyncio.get_event_loop().run_forever()
-
-# Joystick data stream
-# async def receive_joystick_data(websocket, path):
-#     print("Client Connected")
-#     try:
-#         while True:
-#             message = await websocket.recv()
-#             print(f"Received joystick data: {message}")
-#             sys.stdout.flush()
-#             await websocket.send(f"Echo: {message}")
-
-#     except websockets.ConnectionClosed:
-#         print("Client disconnected.")
-#         sys.stdout.flush()
-
-
-# start_server = websockets.serve(receive_joystick_data, "0.0.0.0", 8765)
-# asyncio.get_event_loop().run_until_complete(start_server)
-# print("Server is running...")
-# asyncio.get_event_loop().run_forever()
 
 #I2C1 on orin
 i2c_bus = busio.I2C(board.SCL, board.SDA)
