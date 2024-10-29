@@ -31,6 +31,10 @@ def cleanup_old_frames(folder, prefix, max_files=10):
 
 camera1_folder = "D:/Lab/Terminal1/"
 camera2_folder = "D:/Lab/Terminal2/"
+window_width = 640
+window_height = 480
+x_offset = 0
+pan_step = 10  # Pixels to shift per arrow key press
 
 while True:
     # Get the latest frames from both camera feeds
@@ -51,16 +55,33 @@ while True:
 
     # Stitch frames side by side
     stitched_frame = np.hstack((frame1, frame2))
+    stitched_width = stitched_frame.shape[1]
 
-    # Display the stitched frame
-    cv2.imshow("Stitched Camera Feed", stitched_frame)
+    # Calculate maximum allowable offset for panning
+    max_offset = max(0, stitched_width - window_width)
+
+    # Ensure the offset stays within valid range
+    x_offset = max(0, min(x_offset, max_offset))
+
+    # Extract the panning window from the stitched frame
+    display_frame = stitched_frame[0:window_height, x_offset:x_offset + window_width]
+
+    # Display the panning window
+    cv2.imshow("Panning Stitched Camera Feed", display_frame)
 
     # Cleanup old frames periodically
     cleanup_old_frames(camera1_folder, "camera1")
     cleanup_old_frames(camera2_folder, "camera2")
 
-    # Press 'q' to exit
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    # Handle keyboard input for panning
+    key = cv2.waitKey(10) & 0xFF  # Increase wait time to register key presses better
+    if key == ord('q'):  # Quit on 'q' key
         break
+    elif key == 97:  # Left arrow key
+        print("Left key pressed")  # Debug print
+        x_offset -= pan_step
+    elif key == 100:  # Right arrow key
+        print("Right key pressed")  # Debug print
+        x_offset += pan_step
 
 cv2.destroyAllWindows()
