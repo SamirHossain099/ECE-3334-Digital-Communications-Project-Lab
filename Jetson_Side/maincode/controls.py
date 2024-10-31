@@ -13,17 +13,13 @@ class Controls:
         self.i2c_bus = busio.I2C(board.SCL, board.SDA)
         self.pca = PCA9685(self.i2c_bus)
         self.pca.frequency = 46
-        start_server = websockets.serve(self.receive_joystick_data, "0.0.0.0", 8765)
-        asyncio.get_event_loop().run_until_complete(start_server)
-        print("Server is running...")
-        asyncio.get_event_loop().run_forever()  
     
     def pulse_width_to_duty_cycle(self, pulse_width_ms, frequency=46):
         pulse_length = 1000000 / frequency  # Pulse length in microseconds
         duty_cycle = int((pulse_width_ms * 1000) / pulse_length * 0xFFFF)
         return duty_cycle
     
-    async def receive_joystick_data(self, websocket, path):
+    async def receive_joystick_data(self):
         print("Client Connected")
         try:
             while True:
@@ -72,10 +68,10 @@ class Controls:
             print("Client disconnected.")
             sys.stdout.flush()
     
-    # def start_server(self):
-    #     start_server = websockets.serve(self.receive_joystick_data, "0.0.0.0", 8765)
-    #     asyncio.get_event_loop().run_until_complete(start_server)
-    #     print("Server is running...")
-    #     asyncio.get_event_loop().run_forever()  
+    def start_server(self):
+        start_server = websockets.serve(self.receive_joystick_data, "0.0.0.0", 8765)
+        asyncio.get_event_loop().run_until_complete(start_server)
+        print("Server is running...")
+        asyncio.get_event_loop().run_forever()  
 
 
