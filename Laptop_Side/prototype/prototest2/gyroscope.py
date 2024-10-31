@@ -6,7 +6,7 @@ import threading
 import shared_data  # Import the shared data module
 
 class Gyroscope:
-    def __init__(self, serial_port='COM3', baud_rate=115200):
+    def __init__(self, serial_port='COM5', baud_rate=115200):
         self.serial_port = serial_port
         self.baud_rate = baud_rate
         self.ser = None
