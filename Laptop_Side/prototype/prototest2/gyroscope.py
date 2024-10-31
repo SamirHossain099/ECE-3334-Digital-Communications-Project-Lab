@@ -1,72 +1,68 @@
+# gyroscope.py
+
 import serial
 import time
-import math
-import msvcrt
+import threading
+import shared_data  # Import the shared data module
 
 class Gyroscope:
-    def __init__(self):
-        self.SERIAL_PORT = 'COM3'
-        self.BAUD_RATE = 115200
-        self.ser = serial.Serial(self.SERIAL_PORT, self.BAUD_RATE, timeout=1)
-        self.roll = 0.0
-        self.last_time = time.time()
-    
-    def reset_mpu6050(self):
-        self.ser.write(b'`')
-        print("Killswitch activated. Resetting MPU-6050...")
-        time.sleep(1)
-    
+    def __init__(self, serial_port='COM3', baud_rate=115200):
+        self.serial_port = serial_port
+        self.baud_rate = baud_rate
+        self.ser = None
+        self.running = True
+
     def process_data(self, data_line):
+        """Parse serial data and extract roll angle."""
         try:
-            values = [float(x) for x in data_line.strip().split(',')]
-            if len(values) != 6:
-                return
-
-            accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z = values
-
-            current_time = time.time()
-            delta_time = current_time - self.last_time
-
-            gyro_x_rad = math.radians(gyro_x)
-
-            self.roll += gyro_x_rad * delta_time
-
-            roll_degrees = math.degrees(self.roll)
-
-            if roll_degrees > 180.0:
-                roll_degrees -= 360.0
-            elif roll_degrees < -180.0:
-                roll_degrees += 360.0
-
-            if roll_degrees > 30.0:
-                orientation = "Looking Left"
-            elif roll_degrees < -30.0:
-                orientation = "Looking Right"
+            # Extract the roll angle from the data_line
+            if 'Roll Angle:' in data_line:
+                # Split the line to extract the angle
+                parts = data_line.split('Roll Angle:')
+                if len(parts) == 2:
+                    angle_part = parts[1].split('degrees')[0].strip()
+                    roll_degrees = float(angle_part)
+                    with shared_data.roll_lock:
+                        shared_data.roll_angle = roll_degrees
+                    print(f"Processed Roll Angle: {roll_degrees:.2f} degrees")  # Debug
+                else:
+                    print(f"Unexpected data format: {data_line}")
             else:
-                orientation = "Looking Forward"
+                print(f"Unexpected data format: {data_line}")
 
-            print(f"{orientation}, Roll Angle: {roll_degrees:.2f} degrees")
+        except ValueError as e:
+            print(f"Data conversion error: {e}, Data received: {data_line}")
 
-            self.last_time = current_time
+    def data_collection_thread(self):
+        """Thread function for collecting MPU-6050 data."""
+        print("Starting gyroscope data collection in 5 seconds...")
+        time.sleep(5)
+        print("Gyroscope data collection started.")
 
-        except ValueError:
-            pass
-        
-    def RunGyro(self):
         try:
-            while True:
+            while self.running:
+                # Read data from MPU-6050
                 if self.ser.in_waiting > 0:
-                    line = self.ser.readline().decode('utf-8')
-                    self.process_data(line)
+                    line = self.ser.readline().decode('utf-8', errors='ignore').strip()
+                    print(f"Raw data: {line}")  # Debug: show raw serial data
+                    if line:
+                        self.process_data(line)
+                else:
+                    time.sleep(0.01)  # Small delay to prevent 100% CPU usage
 
-                if msvcrt.kbhit():
-                    key = msvcrt.getch()
-                    if key == b'`':
-                        reset_mpu6050()
-                        self.roll = 0.0
-                        self.last_time = time.time()
-        except KeyboardInterrupt:
-            print("Exiting...")
+        except Exception as e:
+            print(f"Data collection error: {e}")
         finally:
-            self.ser.close()
+            if self.ser and self.ser.is_open:
+                self.ser.close()
 
+    def RunGyro(self):
+        """Initialize serial connection and start data collection."""
+        try:
+            self.ser = serial.Serial(self.serial_port, self.baud_rate, timeout=1)
+            self.ser.reset_input_buffer()  # Clear buffer after opening
+        except serial.SerialException as e:
+            print(f"Error opening serial port: {e}")
+            return
+
+        self.data_collection_thread()
