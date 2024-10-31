@@ -1,4 +1,3 @@
-
 import asyncio
 import websockets
 import pygame
@@ -13,8 +12,8 @@ class Send_Control_Data:
         self.joystick = pygame.joystick.Joystick(0)
         self.joystick.init()
         print(f"Connected to joystick: {self.joystick.get_name()}")
-    
-    async def receive_joystick_data(self, websocket, path):
+
+    async def send_joystick_data(self):
         uri = "ws://192.168.137.30:8765"
         
         async with websockets.connect(uri) as websocket:
@@ -41,6 +40,6 @@ class Send_Control_Data:
                     running = False
 
     def start_server(self):
-        asyncio.run(self.receive_joystick_data())
+        asyncio.run(self.send_joystick_data())
 
 
