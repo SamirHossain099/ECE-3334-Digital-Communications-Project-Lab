@@ -1,48 +1,27 @@
+# maintest.py
 import threading
 import time
-from gyroscope import Gyroscope
 from video_display import VideoDisplay
+from gyro_reader import GyroReader
 
-# Shared orientation variable and a lock for synchronization
-orientation_lock = threading.Lock()
-orientation = "Looking Forward"
+# Initialize the gyro reader
+gyro_reader = GyroReader(serial_port='COM3', baud_rate=115200)
 
-# Functions to update and read orientation
-def update_orientation(new_orientation):
-    global orientation
-    with orientation_lock:
-        orientation = new_orientation
+# Define a callback function for the VideoDisplay to get orientation
+def get_orientation_callback():
+    return gyro_reader.get_orientation()
 
-def get_orientation():
-    with orientation_lock:
-        return orientation
+# Initialize the video display with the gyro callback
+video_display = VideoDisplay(get_orientation_callback)
 
-# Modify the Gyroscope class to call update_orientation
-class GyroscopeModified(Gyroscope):
-    def process_data(self, data_line):
-        super().process_data(data_line)  # Original processing
-        update_orientation(self.orientation)  # Update global orientation
-
-# Initialize components
-print("Initializing components...")
-gyroscope = GyroscopeModified()
-video_display = VideoDisplay(get_orientation)
-
-# Start threads for each component
-print("Configuring threads...")
-gyroscope_thread = threading.Thread(target=gyroscope.RunGyro)
+# Create threads for each component
+gyro_thread = threading.Thread(target=gyro_reader.run)
 video_thread = threading.Thread(target=video_display.display_stitched_feed)
 
-# Start threads
-print("Starting threads...")
-gyroscope_thread.start()
+# Start both threads
+gyro_thread.start()
 video_thread.start()
 
-try:
-    while True:
-        time.sleep(0.1)
-except KeyboardInterrupt:
-    print("Terminating...")
-finally:
-    # Cleanup if needed
-    pass
+# Wait for both threads to complete
+gyro_thread.join()
+video_thread.join()
