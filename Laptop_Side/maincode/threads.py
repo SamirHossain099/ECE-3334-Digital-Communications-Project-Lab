@@ -1,7 +1,7 @@
 # threads.py
 
 # Import Classes
-from sendcontrols import Send_Control_Data
+from sendcontrols import Control
 # from gyroscope import Gyroscope
 from videostream import VideoStream  # Import the CameraStitcher class
 
@@ -10,13 +10,13 @@ import threading
 
 # Initialize components
 print("Initializing components...")
-send_control = Send_Control_Data()
+send_control = Control()
 # gyroscope = Gyroscope()
 video_stream = VideoStream()  # Initialize CameraStitcher
 
 # Start threads for each component
 print("Configuring threads...")
-control_thread = threading.Thread(target=send_control.start_server)
+control_thread = threading.Thread(target=send_control.run)
 # gyroscope_thread = threading.Thread(target=gyroscope.RunGyro)
 video_thread = threading.Thread(target=video_stream.run)
 

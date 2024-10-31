@@ -14,7 +14,7 @@ joystick.init()
 print(f"Connected to joystick: {joystick.get_name()}")
 
 async def send_joystick_data():
-    uri = "ws://192.168.137.30:8765"
+    uri = "ws://192.168.137.30:8765" # Jetson's IP address
     
     async with websockets.connect(uri) as websocket:
         running = True

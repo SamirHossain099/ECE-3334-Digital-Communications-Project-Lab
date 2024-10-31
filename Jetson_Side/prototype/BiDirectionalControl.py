@@ -68,7 +68,7 @@ async def receive_joystick_data(websocket, path):
         sys.stdout.flush()
 
 
-start_server = websockets.serve(receive_joystick_data, "0.0.0.0", 8765)
+start_server = websockets.serve(receive_joystick_data, "0.0.0.0", 8765) # 0.0.0.0 -> Address listening from jetson
 asyncio.get_event_loop().run_until_complete(start_server)
 print("Server is running...")
 asyncio.get_event_loop().run_forever()
