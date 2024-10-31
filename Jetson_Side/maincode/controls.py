@@ -9,24 +9,25 @@ import math
 
 class Controls:
     def __init__(self):
-        #I2C1 on orin pins 3 and 5
+        # I2C1 on Orin
         self.i2c_bus = busio.I2C(board.SCL, board.SDA)
         self.pca = PCA9685(self.i2c_bus)
         self.pca.frequency = 46
-    
-    def pulse_width_to_duty_cycle(self, pulse_width_ms, frequency=46):
+        self.uri = "ws://0.0.0.0:8765"
+
+    def pulse_width_to_duty_cycle(self, pulse_width_ms, frequency=50):
         pulse_length = 1000000 / frequency  # Pulse length in microseconds
         duty_cycle = int((pulse_width_ms * 1000) / pulse_length * 0xFFFF)
         return duty_cycle
-    
-    async def receive_joystick_data(self):
+
+    async def receive_joystick_data(self, websocket, path):
         print("Client Connected")
         try:
             while True:
                 message = await websocket.recv()
                 Axis1 = message[0:6]
                 Axis2 = message[7:13]
-                Axis3 = message[14:20]            
+                Axis3 = message[14:20]
                 Axis1 = float(Axis1)
                 Axis2 = float(Axis2)
                 Axis3 = float(Axis3)
@@ -43,7 +44,7 @@ class Controls:
                     pulsewidth = 1.5 - (Axis1 - 1.0)
                 elif Axis1 < 1.0:
                     pulsewidth = 1.5 + (1.0 - Axis1)
-                     
+
                 duty_cycle = self.pulse_width_to_duty_cycle(pulsewidth)
                 self.pca.channels[0].duty_cycle = duty_cycle
 
@@ -56,10 +57,10 @@ class Controls:
                 axis3_contrib = ((math.exp(abs(float(Axis3) - 2)) - 1) / scale)
                 pulsewidth = 1.5 + 0.5 * axis2_contrib - 0.5 * axis3_contrib
 
-                duty_cycle = self.pulse_width_to_duty_cycle(pulsewidth, self.pca.frequency)
+                duty_cycle = self.pulse_width_to_duty_cycle(pulsewidth)
                 self.pca.channels[1].duty_cycle = duty_cycle
 
-                print(f"Axis1: {Axis1} Axis2: {Axis2} Axis3: {Axis3}") #comment out for production
+                print(f"Axis1: {Axis1} Axis2: {Axis2} Axis3: {Axis3}")
 
                 sys.stdout.flush()
                 await websocket.send(f"Echo: {message}")
@@ -67,11 +68,13 @@ class Controls:
         except websockets.ConnectionClosed:
             print("Client disconnected.")
             sys.stdout.flush()
-    
-    def start_server(self):
-        start_server = websockets.serve(self.receive_joystick_data, "0.0.0.0", 8765)
-        asyncio.get_event_loop().run_until_complete(start_server)
+
+    async def start_server(self):
+        server = await websockets.serve(self.receive_joystick_data, "0.0.0.0", 8765)
         print("Server is running...")
-        asyncio.get_event_loop().run_forever()  
+        await server.wait_closed()
+
+    def run(self):
+        asyncio.run(self.start_server()) 
 
 

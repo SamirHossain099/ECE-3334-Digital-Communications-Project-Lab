@@ -14,7 +14,7 @@ def main():
     control = Controls()
 
     video_streamer_thread = threading.Thread(target=video_streamer.run)
-    control_thread  = threading.Thread(target=control.start_server)
+    control_thread  = threading.Thread(target=control.run)
 
     video_streamer_thread.start()
     control_thread.start()
