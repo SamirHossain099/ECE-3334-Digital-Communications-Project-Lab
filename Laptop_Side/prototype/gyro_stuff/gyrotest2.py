@@ -1,6 +1,5 @@
 import serial
 import time
-import math
 import threading
 from PIL import Image, ImageTk
 import tkinter as tk
@@ -10,16 +9,12 @@ SERIAL_PORT = 'COM3'  # Replace with your Arduino's serial port
 BAUD_RATE = 115200
 
 # Initialize serial connection
-ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-ser.reset_input_buffer()  # Clear buffer after opening
-
-# Variables for calculating roll
-roll = 0.0
-last_time = time.time()
-last_reset_time = time.time()  # Initialize reset time globally
-
-# Define reset interval in seconds (adjust as needed)
-RESET_INTERVAL = 60
+try:
+    ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+    ser.reset_input_buffer()  # Clear buffer after opening
+except serial.SerialException as e:
+    print(f"Error opening serial port: {e}")
+    exit(1)
 
 # Global variable to hold the roll angle for GUI
 roll_angle = 0.0
@@ -35,74 +30,44 @@ def reset_mpu6050():
     ser.reset_input_buffer()  # Clear the serial buffer to start fresh
 
 def process_data(data_line):
-    """Parse serial data and calculate roll."""
-    global roll, last_time, roll_angle
-    alpha = 0.98  # Complementary filter constant
+    """Parse serial data and extract roll angle."""
+    global roll_angle
 
     try:
-        values = [float(x) for x in data_line.strip().split(',')]
-        if len(values) != 6:
+        # Extract the roll angle from the data_line
+        if 'Roll Angle:' in data_line:
+            # Split the line to extract the angle
+            parts = data_line.split('Roll Angle:')
+            if len(parts) == 2:
+                angle_part = parts[1].split('degrees')[0].strip()
+                roll_degrees = float(angle_part)
+                with roll_lock:
+                    roll_angle = roll_degrees
+                print(f"Processed Roll Angle: {roll_degrees:.2f} degrees")  # Debug
+            else:
+                print(f"Unexpected data format: {data_line}")
+        else:
             print(f"Unexpected data format: {data_line}")
-            return
-
-        accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z = values
-        current_time = time.time()
-        delta_time = current_time - last_time
-
-        # Calculate roll from accelerometer data
-        accel_roll = math.degrees(math.atan2(accel_y, accel_z))
-
-        # Calculate roll angle from gyro data
-        gyro_roll_rate = gyro_x  # Assuming gyro_x is in degrees/sec
-        gyro_roll = roll + gyro_roll_rate * delta_time
-
-        # Complementary filter to combine both measurements
-        roll = alpha * gyro_roll + (1 - alpha) * accel_roll
-
-        # Normalize roll angle to -180 to 180 degrees
-        roll_degrees = (roll + 180) % 360 - 180
-
-        # Update the global roll_angle variable safely
-        with roll_lock:
-            roll_angle = roll_degrees
-
-        # Print orientation (optional)
-        # if roll_degrees > 30.0:
-        #     orientation = "Looking Left"
-        # elif roll_degrees < -30.0:
-        #     orientation = "Looking Right"
-        # else:
-        #     orientation = "Looking Forward"
-
-        print(f"Roll Angle: {roll_degrees:.2f} degrees")
-        last_time = current_time
 
     except ValueError as e:
         print(f"Data conversion error: {e}, Data received: {data_line}")
 
 def data_collection_thread():
     """Thread function for collecting MPU-6050 data."""
-    global roll, last_time, last_reset_time  # Ensure we can modify the global variables
     print("Starting data collection in 5 seconds...")
     time.sleep(5)
     print("Data collection started.")
 
     try:
         while True:
-            # Periodically reset MPU-6050 to avoid drift or errors
-            current_time = time.time()
-            if current_time - last_reset_time >= RESET_INTERVAL:
-                reset_mpu6050()
-                roll = 0.0
-                last_time = current_time
-                last_reset_time = current_time  # Reset the timer
-
             # Read data from MPU-6050
             if ser.in_waiting > 0:
                 line = ser.readline().decode('utf-8', errors='ignore').strip()
-                # print(f"Raw data: {line}")  # Debug: show raw serial data
+                print(f"Raw data: {line}")  # Debug: show raw serial data
                 if line:
                     process_data(line)
+            else:
+                time.sleep(0.01)  # Small delay to prevent 100% CPU usage
 
     except Exception as e:
         print(f"Data collection error: {e}")
@@ -122,7 +87,11 @@ def main():
 
     # Load the panoramic image
     image_path = "C:/Users/samir/Downloads/1280x480.jpg"  # Replace with your image file
-    panoramic_image = Image.open(image_path)
+    try:
+        panoramic_image = Image.open(image_path)
+    except FileNotFoundError:
+        print(f"Image file not found: {image_path}")
+        exit(1)
 
     # Ensure the image is 1280x480
     if panoramic_image.size != (1280, 480):
@@ -148,12 +117,9 @@ def main():
             angle = roll_angle  # Get the current roll angle
 
         # Clamp the roll angle to -90 to +90 degrees
-        if angle < -90:
-            angle = -90
-        elif angle > 90:
-            angle = 90
+        angle = max(min(angle, 90), -90)
 
-        # Map the roll angle (-90 to +90 degrees) to x-offset (640 to 0 pixels)
+        # Map the roll angle (-90 to +90 degrees) to x-offset (0 to 640 pixels)
         # Leftmost position at angle = +90 degrees (x_offset = 0)
         # Center position at angle = 0 degrees (x_offset = 320)
         # Rightmost position at angle = -90 degrees (x_offset = 640)
@@ -164,6 +130,9 @@ def main():
             x_offset = 0
         elif x_offset > (1280 - 640):
             x_offset = (1280 - 640)
+
+        # Debug: Print roll_angle and x_offset
+        print(f"Update Image - Roll Angle: {angle:.2f}, X Offset: {x_offset}")  # Debug
 
         # Crop the image to the current view
         box = (x_offset, 0, x_offset + 640, 480)
