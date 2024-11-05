@@ -14,7 +14,8 @@ class Send_Control_Data:
         print(f"Connected to joystick: {self.joystick.get_name()}")
 
     async def send_joystick_data(self):
-        uri = "ws://192.168.137.30:8765"
+        # uri = "ws://192.168.137.30:8765" #jetson adhoc ip
+        uri = "ws://10.161.189.106:8765" #jetson ttu ip
         
         async with websockets.connect(uri) as websocket:
             running = True
@@ -28,7 +29,7 @@ class Send_Control_Data:
                 print(f"Sent: {axis_value_str}")
     
                 response = await websocket.recv()
-                print(f"Received from server: {response}")
+                # print(f"Received from server: {response}")
                 
                 sys.stdout.flush()
                 pygame.time.wait(20)  

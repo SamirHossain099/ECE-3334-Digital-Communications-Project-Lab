@@ -24,7 +24,7 @@ class Gyroscope:
                     roll_degrees = float(angle_part)
                     with shared_data.roll_lock:
                         shared_data.roll_angle = roll_degrees
-                    print(f"Processed Roll Angle: {roll_degrees:.2f} degrees")  # Debug
+                    # print(f"Processed Roll Angle: {roll_degrees:.2f} degrees")  # Debug
                 else:
                     print(f"Unexpected data format: {data_line}")
             else:
@@ -44,7 +44,7 @@ class Gyroscope:
                 # Read data from MPU-6050
                 if self.ser.in_waiting > 0:
                     line = self.ser.readline().decode('utf-8', errors='ignore').strip()
-                    print(f"Raw data: {line}")  # Debug: show raw serial data
+                    # print(f"Raw data: {line}")  # Debug: show raw serial data
                     if line:
                         self.process_data(line)
                 else:

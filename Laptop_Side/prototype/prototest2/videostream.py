@@ -1,4 +1,15 @@
-# videostream.py
+#Open two terminals and write the below commands in each terminal, make sure to have gstreamer installed
+#Terminal 1
+#gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp, payload=96" ! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! multifilesink location="D:/Lab/Terminal1/camera1_frame_%05d.jpg"
+#gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp, payload=96" ! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! multifilesink location="C:/temp/camera1/camera1_frame_%05d.jpg"
+
+#Terminal 2
+#gst-launch-1.0 udpsrc port=5001 caps="application/x-rtp, payload=96" ! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! multifilesink location="D:/Lab/Terminal2/camera2_frame_%05d.jpg"
+#gst-launch-1.0 udpsrc port=5001 caps="application/x-rtp, payload=96" ! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! multifilesink location="C:/temp/camera2/camera2_frame_%05d.jpg"
+
+
+### Make sure to change file save and retrive location so at the end of two ^ Terminal commands change save directory
+### Below camera1_folder, camera2_folder edit the retrive directories
 
 import cv2
 import glob
