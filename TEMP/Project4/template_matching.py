@@ -2,15 +2,15 @@ import cv2
 import numpy as np
 import os
 
-def preprocess_and_extract_symbols(image_path):
+def preprocess_and_extract_symbols(image_path, use_one_in_ten=True):
     # Step 1: Input Image Acquisition
     img_color = cv2.imread(image_path)
     if img_color is None:
         print("Error: Image not found or unable to read.")
-        return None, None
+        return None, None, None
 
-    cv2.imshow("Original Image", img_color)
-    cv2.waitKey(0)
+    # cv2.imshow("Original Image", img_color)
+    # cv2.waitKey(0)
 
     # Step 2: Preprocessing
     img_gray = cv2.cvtColor(img_color, cv2.COLOR_BGR2GRAY)
@@ -25,18 +25,17 @@ def preprocess_and_extract_symbols(image_path):
     img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_OPEN, kernel)
     img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, kernel)
 
-    cv2.imshow("Binarized Image", img_bin)
-    cv2.waitKey(0)
+    # cv2.imshow("Binarized Image", img_bin)
+    # cv2.waitKey(0)
 
     # Step 3: Card Orientation Detection
     contours, _ = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         print("Error: No contours found.")
-        return None, None
+        return None, None, None
 
     largest_contour = max(contours, key=cv2.contourArea)
     rect = cv2.minAreaRect(largest_contour)
-    
     angle = rect[2]
     width, height = rect[1][0], rect[1][1]
     if width < height:
@@ -50,8 +49,8 @@ def preprocess_and_extract_symbols(image_path):
     M = cv2.getRotationMatrix2D(center, angle, 1.0)
     img_rotated = cv2.warpAffine(img_color, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
-    cv2.imshow("Rotated Image", img_rotated)
-    cv2.waitKey(0)
+    # cv2.imshow("Rotated Image", img_rotated)
+    # cv2.waitKey(0)
 
     # Step 4: Card Cropping
     img_gray_rotated = cv2.cvtColor(img_rotated, cv2.COLOR_BGR2GRAY)
@@ -63,7 +62,7 @@ def preprocess_and_extract_symbols(image_path):
     contours, _ = cv2.findContours(img_bin_rotated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         print("Error: No contours found in rotated image.")
-        return None, None
+        return None, None, None
 
     card_contour = max(contours, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(card_contour)
@@ -73,7 +72,7 @@ def preprocess_and_extract_symbols(image_path):
     cv2.waitKey(0)
 
     # Step 5: Extracting Rank and Suit Symbols
-    # Assuming symbols are in top-left corner
+    # Assuming symbols are in the top-left corner
     symbol_region = card_cropped[0:int(h*0.3), 0:int(w*0.17)]
     cv2.imshow("Symbol Region", symbol_region)
     cv2.waitKey(0)
@@ -81,22 +80,8 @@ def preprocess_and_extract_symbols(image_path):
     symbol_gray = cv2.cvtColor(symbol_region, cv2.COLOR_BGR2GRAY)
     _, symbol_bin = cv2.threshold(symbol_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    cv2.imshow("Binarized Symbol", symbol_bin)
+    cv2.imshow("Binarized Symbol Region", symbol_bin)
     cv2.waitKey(0)
-
-    # # Step 6: Finding Contours in Symbol Region
-    # contours, _ = cv2.findContours(symbol_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    # # Filter out small contours
-    # min_contour_area = 50  # Adjust based on experimentation
-    # filtered_contours = [cnt for cnt in contours if cv2.contourArea(cnt) > min_contour_area]
-    # print(filtered_contours)
-    # if len(filtered_contours) < 2:
-    #     print("Error: Not enough contours found to separate rank and suit symbols.")
-    #     return None, None, None
-
-    # # Sort contours from top to bottom
-    # bounding_boxes = [cv2.boundingRect(c) for c in filtered_contours]
-    # (filtered_contours, bounding_boxes) = zip(*sorted(zip(filtered_contours, bounding_boxes), key=lambda b: b[1][1]))
 
     # Step 6: Finding Contours in Symbol Region
     contours, _ = cv2.findContours(symbol_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -105,8 +90,21 @@ def preprocess_and_extract_symbols(image_path):
     min_contour_area = 50  # Adjust based on experimentation
     filtered_contours = [cnt for cnt in contours if cv2.contourArea(cnt) > min_contour_area]
 
-    if len(filtered_contours) < 2:
-        print("Error: Not enough contours found to separate rank and suit symbols.")
+    # Filter out contours near the edges
+    def is_contour_near_edge(contour, image_shape, margin_fraction=0.05):
+        x, y, w, h = cv2.boundingRect(contour)
+        img_h, img_w = image_shape[:2]
+        margin_x = int(img_w * margin_fraction)
+        margin_y = int(img_h * margin_fraction)
+        if x < margin_x or y < margin_y or x + w > img_w - margin_x or y + h > img_h - margin_y:
+            return True
+        else:
+            return False
+
+    filtered_contours = [cnt for cnt in filtered_contours if not is_contour_near_edge(cnt, symbol_bin.shape)]
+
+    if len(filtered_contours) == 0:
+        print("Error: No valid contours found after filtering.")
         return None, None, None
 
     # Create a copy of the symbol region for visualization
@@ -116,65 +114,92 @@ def preprocess_and_extract_symbols(image_path):
     for cnt in filtered_contours:
         cv2.drawContours(symbol_with_contours, [cnt], -1, (0, 255, 0), 2)
 
-    # Display the image with filtered contours
     cv2.imshow("Filtered Contours", symbol_with_contours)
     cv2.waitKey(0)
 
-    # Calculate the center of the symbol region
-    symbol_center_x = symbol_bin.shape[1] // 2
-    symbol_center_y = symbol_bin.shape[0] // 2
+    # Sort contours by vertical position (y-coordinate)
+    bounding_boxes = [cv2.boundingRect(c) for c in filtered_contours]
+    sorted_contours = sorted(zip(filtered_contours, bounding_boxes), key=lambda b: b[1][1])
 
-    # Sort contours by combined size and distance metric
-    def contour_priority_score(contour, center_x, center_y):
-        M = cv2.moments(contour)
-        if M["m00"] == 0:  # Prevent division by zero
-            return float('inf')
-        cx = int(M["m10"] / M["m00"])
-        cy = int(M["m01"] / M["m00"])
-        distance = ((cx - center_x) ** 2 + (cy - center_y) ** 2) ** 0.5
-        area = cv2.contourArea(contour)
-        # Return a score that considers both distance and area (adjust weights as needed)
-        return distance / (area + 1e-5)  # Add a small constant to prevent division by zero
+    # Identify rank and suit symbols
+    # Assuming the suit symbol is the lowest contour
+    suit_contour = sorted_contours[-1][0]
+    suit_bbox = sorted_contours[-1][1]
 
-    # Sort contours by their priority score (lower is better)
-    filtered_contours.sort(key=lambda cnt: contour_priority_score(cnt, symbol_center_x, symbol_center_y))
+    # The rest are rank symbols (could be more than one contour, e.g., '1' and '0' in '10')
+    rank_contours = [c[0] for c in sorted_contours[:-1]]
+    rank_bboxes = [c[1] for c in sorted_contours[:-1]]
 
-    # Take the two top-ranked contours by the priority score
-    rank_contour = filtered_contours[0]
-    suit_contour = filtered_contours[1]
+    # For '10', there will be two rank contours; for other cards, usually one
+    # Option to choose between '1' and '0' for the rank symbol
+    if len(rank_contours) == 0:
+        print("Error: No rank contours found.")
+        return None, None, None
 
-    # Draw the selected rank and suit contours in red and blue for verification
-    cv2.drawContours(symbol_with_contours, [rank_contour], -1, (0, 0, 255), 2)
-    cv2.drawContours(symbol_with_contours, [suit_contour], -1, (255, 0, 0), 2)
+    if len(rank_contours) == 1:
+        # Only one rank contour
+        rank_contour = rank_contours[0]
+        rank_bbox = rank_bboxes[0]
+    else:
+        # Multiple rank contours (e.g., '1' and '0'), Choose between '1' and '0' based on horizontal position
+        # '1' is on the left, '0' on the right
+        if use_one_in_ten:
+            # Choose the leftmost contour (assumed to be '1')
+            rank_idx = np.argmin([bbox[0] for bbox in rank_bboxes])
+        else:
+            # Choose the rightmost contour (assumed to be '0')
+            rank_idx = np.argmax([bbox[0] for bbox in rank_bboxes])
+        rank_contour = rank_contours[rank_idx]
+        rank_bbox = rank_bboxes[rank_idx]
 
-    # Display the image with chosen rank and suit contours
+    # Draw selected rank and suit contours for visualization
+    cv2.drawContours(symbol_with_contours, [rank_contour], -1, (0, 0, 255), 2)  # Red
+    cv2.drawContours(symbol_with_contours, [suit_contour], -1, (255, 0, 0), 2)  # Blue
+
     cv2.imshow("Selected Rank and Suit Contours", symbol_with_contours)
     cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-    # Sort contours by vertical position (y-coordinate)
-    bounding_boxes = [cv2.boundingRect(c) for c in [rank_contour, suit_contour]]
-    sorted_contours = sorted(zip([rank_contour, suit_contour], bounding_boxes), key=lambda b: b[1][1])
 
     # Step 7: Extracting Rank and Suit Symbols
     # Extract rank symbol
-    x, y, w, h = sorted_contours[0][1]
+    x, y, w, h = rank_bbox
     rank_symbol = symbol_bin[y:y+h, x:x+w]
-    rank_symbol = cv2.resize(rank_symbol, (70, 100))
 
     # Extract suit symbol
-    x, y, w, h = sorted_contours[1][1]
+    x, y, w, h = suit_bbox
     suit_symbol = symbol_bin[y:y+h, x:x+w]
-    suit_symbol = cv2.resize(suit_symbol, (70, 125))
+
+    # Resize symbols while maintaining aspect ratio and padding
+    def resize_and_pad(img, size=(70, 125)):
+        h, w = img.shape
+        aspect_ratio = w / h
+        target_w, target_h = size
+
+        # Compute scaling factor to fit the symbol into the target size
+        scaling_factor = min(target_w / w, target_h / h)
+        new_w = int(w * scaling_factor)
+        new_h = int(h * scaling_factor)
+        resized_img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+        # Create a new image with the target size and place the resized symbol at the center
+        padded_img = np.zeros((target_h, target_w), dtype=np.uint8)
+        x_offset = (target_w - new_w) // 2
+        y_offset = (target_h - new_h) // 2
+        padded_img[y_offset:y_offset+new_h, x_offset:x_offset+new_w] = resized_img
+
+        return padded_img
+
+    rank_symbol_resized = resize_and_pad(rank_symbol)
+    suit_symbol_resized = resize_and_pad(suit_symbol)
 
     # Display extracted symbols
-    cv2.imshow("Rank Symbol", rank_symbol)
+    cv2.imshow("Rank Symbol", rank_symbol_resized)
     cv2.waitKey(0)
-    cv2.imshow("Suit Symbol", suit_symbol)
+    cv2.imshow("Suit Symbol", suit_symbol_resized)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-    return rank_symbol, suit_symbol, card_cropped
+    return rank_symbol_resized, suit_symbol_resized, card_cropped
+
 
 def match_templates(rank_symbol, suit_symbol, rank_templates, suit_templates):
     # Template Matching for Ranks
@@ -219,7 +244,7 @@ def load_templates(template_folder):
     suit_templates = {}
 
     # Load rank templates
-    ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
+    ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '1', 'J', 'Q', 'K']
     for rank in ranks:
         template_path = os.path.join(template_folder, 'ranks', f'{rank}.jpg')
         template = cv2.imread(template_path, cv2.IMREAD_GRAYSCALE)
@@ -248,8 +273,8 @@ def load_templates(template_folder):
 # Wrong - 6, 8, 9
 # Main code to run the functions
 if __name__ == "__main__":
-    image_path = 'TEMP/Project4/test_images2/diamond.jpeg'
-    template_folder = 'TEMP/Project4/imgs'  # Folder containing 'ranks' and 'suits' subfolders
+    image_path = 'e:/Laptop/Work/Study/Uni - TTU/6) Fall 24 - Sixth Semester/Fall 2024 TTU Image Processing (ECE-4367-001) Full Term/Projects/Project 4/test_images2/club.jpeg'
+    template_folder = 'e:/Laptop/Work/Study/Uni - TTU/6) Fall 24 - Sixth Semester/Fall 2024 TTU Image Processing (ECE-4367-001) Full Term/Projects/Project 4/imgs'  # Folder containing 'ranks' and 'suits' subfolders
 
     # Load templates
     rank_templates, suit_templates = load_templates(template_folder)
