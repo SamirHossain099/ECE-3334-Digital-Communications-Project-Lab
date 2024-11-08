@@ -248,8 +248,8 @@ def load_templates(template_folder):
 # Wrong - 6, 8, 9
 # Main code to run the functions
 if __name__ == "__main__":
-    image_path = 'e:/Laptop/Work/Study/Uni - TTU/6) Fall 24 - Sixth Semester/Fall 2024 TTU Image Processing (ECE-4367-001) Full Term/Projects/Project 4/test_images2/Q.jpeg'
-    template_folder = 'e:/Laptop/Work/Study/Uni - TTU/6) Fall 24 - Sixth Semester/Fall 2024 TTU Image Processing (ECE-4367-001) Full Term/Projects/Project 4/imgs'  # Folder containing 'ranks' and 'suits' subfolders
+    image_path = 'TEMP/Project4/test_images2/diamond.jpeg'
+    template_folder = 'TEMP/Project4/imgs'  # Folder containing 'ranks' and 'suits' subfolders
 
     # Load templates
     rank_templates, suit_templates = load_templates(template_folder)
