@@ -64,8 +64,8 @@ def preprocess_and_extract_symbols(image, use_one_in_ten=True, debug=False):
         angle = angle + 90
 
     # Rotate image to correct orientation
-    (h, w) = img_gray.shape
-    center = (w // 2, h // 2)
+    (h, w) = img_gray.shape[:2]
+    center = rect[0]
     M = cv2.getRotationMatrix2D(center, angle, 1.0)
     img_rotated = cv2.warpAffine(img_color, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
     if debug:
