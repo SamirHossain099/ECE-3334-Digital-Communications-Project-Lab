@@ -271,8 +271,11 @@ def load_templates(template_folder):
 
 # Main code to run the functions
 if __name__ == "__main__":
-    image_path = r'E:\Laptop\Work\Study\Uni - TTU\6) Fall 24 - Sixth Semester\Fall 2024 TTU Digital Communications Project Lab (ECE-3334-301) Full Term\ECE-3334-Digital-Communications-Project-Lab\TEMP\Project4\test_images3\JD.jpg'
-    template_folder = r'E:\Laptop\Work\Study\Uni - TTU\6) Fall 24 - Sixth Semester\Fall 2024 TTU Digital Communications Project Lab (ECE-3334-301) Full Term\ECE-3334-Digital-Communications-Project-Lab\TEMP\Project4\imgs'  # Folder containing 'ranks' and 'suits' subfolders
+    # image_path = r'E:\Laptop\Work\Study\Uni - TTU\6) Fall 24 - Sixth Semester\Fall 2024 TTU Digital Communications Project Lab (ECE-3334-301) Full Term\ECE-3334-Digital-Communications-Project-Lab\TEMP\Project4\test_images3\JD.jpg'
+    # template_folder = r'E:\Laptop\Work\Study\Uni - TTU\6) Fall 24 - Sixth Semester\Fall 2024 TTU Digital Communications Project Lab (ECE-3334-301) Full Term\ECE-3334-Digital-Communications-Project-Lab\TEMP\Project4\imgs'  # Folder containing 'ranks' and 'suits' subfolders
+
+    image_path = "TEMP/Project4/test_images3/QS.jpg"
+    template_folder = "TEMP/Project4/imgs"
 
     # Load templates
     rank_templates, suit_templates = load_templates(template_folder)
