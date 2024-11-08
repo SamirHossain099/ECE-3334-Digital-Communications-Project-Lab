@@ -9,8 +9,8 @@ def preprocess_and_extract_symbols(image_path, use_one_in_ten=True):
         print("Error: Image not found or unable to read.")
         return None, None, None
 
-    # cv2.imshow("Original Image", img_color)
-    # cv2.waitKey(0)
+    cv2.imshow("Original Image", img_color)
+    cv2.waitKey(0)
 
     # Step 2: Preprocessing
     img_gray = cv2.cvtColor(img_color, cv2.COLOR_BGR2GRAY)
@@ -25,8 +25,8 @@ def preprocess_and_extract_symbols(image_path, use_one_in_ten=True):
     img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_OPEN, kernel)
     img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, kernel)
 
-    # cv2.imshow("Binarized Image", img_bin)
-    # cv2.waitKey(0)
+    cv2.imshow("Binarized Image", img_bin)
+    cv2.waitKey(0)
 
     # Step 3: Card Orientation Detection
     contours, _ = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -49,8 +49,8 @@ def preprocess_and_extract_symbols(image_path, use_one_in_ten=True):
     M = cv2.getRotationMatrix2D(center, angle, 1.0)
     img_rotated = cv2.warpAffine(img_color, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
-    # cv2.imshow("Rotated Image", img_rotated)
-    # cv2.waitKey(0)
+    cv2.imshow("Rotated Image", img_rotated)
+    cv2.waitKey(0)
 
     # Step 4: Card Cropping
     img_gray_rotated = cv2.cvtColor(img_rotated, cv2.COLOR_BGR2GRAY)
@@ -213,11 +213,16 @@ def match_templates(rank_symbol, suit_symbol, rank_templates, suit_templates):
             max_score_rank = score
             best_match_rank = rank_name
 
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+    # Erode the suit symbol
+    suit_symbol_eroded = cv2.erode(suit_symbol, kernel)
+
     # Template Matching for Suits
     max_score_suit = -np.inf
     best_match_suit = None
     for suit_name, suit_template in suit_templates.items():
-        res = cv2.matchTemplate(suit_symbol, suit_template, cv2.TM_CCOEFF_NORMED)
+        suit_template_eroded = cv2.erode(suit_template, kernel)
+        res = cv2.matchTemplate(suit_symbol_eroded, suit_template, cv2.TM_CCOEFF_NORMED)
         score = res[0][0]
         print(score)
         if score > max_score_suit:
@@ -273,8 +278,8 @@ def load_templates(template_folder):
 # Wrong - 6, 8, 9
 # Main code to run the functions
 if __name__ == "__main__":
-    image_path = 'e:/Laptop/Work/Study/Uni - TTU/6) Fall 24 - Sixth Semester/Fall 2024 TTU Image Processing (ECE-4367-001) Full Term/Projects/Project 4/test_images2/club.jpeg'
-    template_folder = 'e:/Laptop/Work/Study/Uni - TTU/6) Fall 24 - Sixth Semester/Fall 2024 TTU Image Processing (ECE-4367-001) Full Term/Projects/Project 4/imgs'  # Folder containing 'ranks' and 'suits' subfolders
+    image_path = r'e:\Laptop\Work\Study\Uni - TTU\6) Fall 24 - Sixth Semester\Fall 2024 TTU Digital Communications Project Lab (ECE-3334-301) Full Term\ECE-3334-Digital-Communications-Project-Lab\TEMP\Project4\test_images3\9C.jpg'
+    template_folder = r'e:\Laptop\Work\Study\Uni - TTU\6) Fall 24 - Sixth Semester\Fall 2024 TTU Digital Communications Project Lab (ECE-3334-301) Full Term\ECE-3334-Digital-Communications-Project-Lab\TEMP\Project4\imgs'
 
     # Load templates
     rank_templates, suit_templates = load_templates(template_folder)
