@@ -272,7 +272,7 @@ def load_templates(template_folder):
 
 # Main code to run the functions
 if __name__ == "__main__":
-    image_path = 'TEMP/Project4/test_images2/10.jpeg'
+    image_path = 'TEMP/Project4/test_images2/diamond.jpeg'
     template_folder = 'TEMP/Project4/imgs'  # Folder containing 'ranks' and 'suits' subfolders
 
     # Load templates
