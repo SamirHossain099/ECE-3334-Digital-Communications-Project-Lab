@@ -312,7 +312,6 @@ def load_templates():
 
 def main():
     # Load templates
-    global rank_templates, suit_templates
     rank_templates, suit_templates = load_templates()
 
     # Create the main window
@@ -351,8 +350,6 @@ def main():
             return
 
         print("Press 's' to capture the card when it is centered in the video feed.")
-        print("Press 'q' to exit.")
-
         while True:
             ret, frame = cap.read()
             if not ret:
@@ -370,13 +367,13 @@ def main():
                 if rank_symbol is not None and suit_symbol is not None:
                     result = match_templates(rank_symbol, suit_symbol, rank_templates, suit_templates)
                     # Display the final cropped card with result
-                    cv2.putText(card_cropped, result, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), 1)
+                    cv2.putText(card_cropped, result, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), 2)
                     cv2.imshow("Final Result", card_cropped)
                     cv2.waitKey(0)
-                    cv2.destroyWindow("Final Result")
+                    cv2.destroyAllWindows()
                 else:
                     print("Symbol extraction failed.")
-                # Continue the loop to allow more cards to be processed
+                break
             elif key == ord('q'):
                 # Exit if 'q' is pressed
                 print("Exiting...")
@@ -403,7 +400,7 @@ def main():
                 if rank_symbol is not None and suit_symbol is not None:
                     result = match_templates(rank_symbol, suit_symbol, rank_templates, suit_templates)
                     # Display the final cropped card with result
-                    cv2.putText(card_cropped, result, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), 1)
+                    cv2.putText(card_cropped, result, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), 2)
                     cv2.imshow("Final Result", card_cropped)
                     cv2.waitKey(0)
                     cv2.destroyAllWindows()
