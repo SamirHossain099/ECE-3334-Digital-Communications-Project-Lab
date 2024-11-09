@@ -25,8 +25,8 @@ def preprocess_and_extract_symbols(image_path, use_one_in_ten=True):
     img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_OPEN, kernel)
     img_bin = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, kernel)
 
-    # cv2.imshow("Binarized Image", img_bin)
-    # cv2.waitKey(0)
+    cv2.imshow("Binarized Image", img_bin)
+    cv2.waitKey(0)
 
     # Step 3: Card Orientation Detection
     contours, _ = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
