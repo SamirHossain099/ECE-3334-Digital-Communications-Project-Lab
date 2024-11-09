@@ -163,8 +163,7 @@ def preprocess_and_extract_symbols(image, use_one_in_ten=True, debug=False):
         rank_contour = rank_contours[0]
         rank_bbox = rank_bboxes[0]
     else:
-        # Multiple rank contours (e.g., '1' and '0'), Choose between '1' and '0' based on horizontal position
-        # '1' is on the left, '0' on the right
+        # Multiple rank contours (e.g., '1' and '0'), Choose based on position
         if use_one_in_ten:
             # Choose the leftmost contour (assumed to be '1')
             rank_idx = np.argmin([bbox[0] for bbox in rank_bboxes])
@@ -218,7 +217,24 @@ def preprocess_and_extract_symbols(image, use_one_in_ten=True, debug=False):
         cv2.waitKey(0)
         cv2.imshow("Suit Symbol", suit_symbol_resized)
         cv2.waitKey(0)
-        cv2.destroyAllWindows()
+
+        # Close debug windows except the main webcam feed
+        cv2.destroyWindow("Original Image")
+        cv2.destroyWindow("Grayscale Image")
+        cv2.destroyWindow("Binarized Image")
+        if np.mean(img_bin) > 127:
+            cv2.destroyWindow("Inverted Binarized Image")
+        cv2.destroyWindow("After Morphological Operations")
+        cv2.destroyWindow("Contours Detected")
+        cv2.destroyWindow("Rotated Image")
+        cv2.destroyWindow("Contours on Rotated Image")
+        cv2.destroyWindow("Cropped Card")
+        cv2.destroyWindow("Symbol Region")
+        cv2.destroyWindow("Binarized Symbol Region")
+        cv2.destroyWindow("Filtered Contours in Symbol Region")
+        cv2.destroyWindow("Selected Rank and Suit Contours")
+        cv2.destroyWindow("Rank Symbol")
+        cv2.destroyWindow("Suit Symbol")
 
     return rank_symbol_resized, suit_symbol_resized, card_cropped
 
@@ -296,6 +312,7 @@ def load_templates():
 
 def main():
     # Load templates
+    global rank_templates, suit_templates
     rank_templates, suit_templates = load_templates()
 
     # Create the main window
@@ -334,6 +351,8 @@ def main():
             return
 
         print("Press 's' to capture the card when it is centered in the video feed.")
+        print("Press 'q' to exit.")
+
         while True:
             ret, frame = cap.read()
             if not ret:
@@ -347,17 +366,17 @@ def main():
             if key == ord('s'):
                 # Process the frame
                 # Enable debug mode to display images after each step
-                rank_symbol, suit_symbol, card_cropped = preprocess_and_extract_symbols(frame, debug=True)
+                rank_symbol, suit_symbol, card_cropped = preprocess_and_extract_symbols(frame, debug=False)
                 if rank_symbol is not None and suit_symbol is not None:
                     result = match_templates(rank_symbol, suit_symbol, rank_templates, suit_templates)
                     # Display the final cropped card with result
-                    cv2.putText(card_cropped, result, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 255), 3)
+                    cv2.putText(card_cropped, result, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), 1)
                     cv2.imshow("Final Result", card_cropped)
                     cv2.waitKey(0)
-                    cv2.destroyAllWindows()
+                    cv2.destroyWindow("Final Result")
                 else:
                     print("Symbol extraction failed.")
-                break
+                # Continue the loop to allow more cards to be processed
             elif key == ord('q'):
                 # Exit if 'q' is pressed
                 print("Exiting...")
@@ -384,7 +403,7 @@ def main():
                 if rank_symbol is not None and suit_symbol is not None:
                     result = match_templates(rank_symbol, suit_symbol, rank_templates, suit_templates)
                     # Display the final cropped card with result
-                    cv2.putText(card_cropped, result, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 255), 3)
+                    cv2.putText(card_cropped, result, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), 1)
                     cv2.imshow("Final Result", card_cropped)
                     cv2.waitKey(0)
                     cv2.destroyAllWindows()
