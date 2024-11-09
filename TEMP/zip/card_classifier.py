@@ -351,7 +351,7 @@ def main():
                 if rank_symbol is not None and suit_symbol is not None:
                     result = match_templates(rank_symbol, suit_symbol, rank_templates, suit_templates)
                     # Display the final cropped card with result
-                    cv2.putText(card_cropped, result, (250, 80), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 255), 3)
+                    cv2.putText(card_cropped, result, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 255), 3)
                     cv2.imshow("Final Result", card_cropped)
                     cv2.waitKey(0)
                     cv2.destroyAllWindows()
@@ -384,7 +384,7 @@ def main():
                 if rank_symbol is not None and suit_symbol is not None:
                     result = match_templates(rank_symbol, suit_symbol, rank_templates, suit_templates)
                     # Display the final cropped card with result
-                    cv2.putText(card_cropped, result, (250, 80), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 255), 3)
+                    cv2.putText(card_cropped, result, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 255), 3)
                     cv2.imshow("Final Result", card_cropped)
                     cv2.waitKey(0)
                     cv2.destroyAllWindows()
