@@ -127,10 +127,7 @@ def preprocess_and_extract_symbols(image, use_one_in_ten=True, debug=False):
         else:
             return False
 
-    filtered_contours = []
-    for cnt in filtered_contours:
-        if not is_contour_near_edge(cnt, symbol_bin.shape):
-            filtered_contours.append(cnt)
+    filtered_contours = [cnt for cnt in filtered_contours if not is_contour_near_edge(cnt, symbol_bin.shape)]
 
     if debug:
         symbol_with_contours = cv2.cvtColor(symbol_bin, cv2.COLOR_GRAY2BGR)
