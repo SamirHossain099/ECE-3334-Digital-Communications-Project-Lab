@@ -32,10 +32,10 @@ def cleanup_old_frames(folder, prefix, max_files=10):
     for f in files[:-max_files]:  # Keep only the latest `max_files` images
         os.remove(f)
 
-# camera1_folder = "D:/Lab/Terminal1/"
-camera1_folder = "C:/temp/camera1/"
-# camera2_folder = "D:/Lab/Terminal2/"
-camera2_folder = "C:/temp/camera2/"
+camera1_folder = "D:/Lab/Terminal1/"
+# camera1_folder = "C:/temp/camera1/"
+camera2_folder = "D:/Lab/Terminal2/"
+# camera2_folder = "C:/temp/camera2/"
 while True:
     # Get the latest frames from both camera feeds
     frame1 = get_latest_frame(camera1_folder, "camera1")
