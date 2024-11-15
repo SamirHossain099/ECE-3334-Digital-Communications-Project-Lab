@@ -1,13 +1,3 @@
-#Open two terminals and write the below commands in each terminal, make sure to have gstreamer installed
-#Terminal 1
-#gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp, payload=96" ! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! multifilesink location="D:/Lab/Terminal1/camera1_frame_%05d.jpg"
-
-#Terminal 2
-#gst-launch-1.0 udpsrc port=5001 caps="application/x-rtp, payload=96" ! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! multifilesink location="D:/Lab/Terminal2/camera2_frame_%05d.jpg"
-
-### Make sure to change file save and retrive location so at the end of two ^ Terminal commands change save directory
-### Below camera1_folder, camera2_folder edit the retrive directories
-
 import serial
 import time
 import threading
@@ -38,6 +28,15 @@ stitched_frame = None  # For the stitched video frame
 roll_lock = threading.Lock()
 frame_lock = threading.Lock()
 
+# Variables for threshold-based movement detection
+previous_roll_angle = None
+MIN_CHANGE_THRESHOLD = 0.5  # Minimum change in degrees to consider as movement
+
+# Variables for reset logic
+last_movement_time = time.time()
+RESET_DURATION = 3.0  # Time in seconds to wait before resetting
+reset_performed = False
+
 def reset_mpu6050():
     """Send a killswitch command to reset MPU-6050."""
     ser.write(b'`')
@@ -46,8 +45,8 @@ def reset_mpu6050():
     ser.reset_input_buffer()  # Clear the serial buffer to start fresh
 
 def process_data(data_line):
-    """Parse serial data and extract roll angle."""
-    global roll_angle
+    """Parse serial data and update roll angle based on significant changes."""
+    global roll_angle, previous_roll_angle, last_movement_time, reset_performed
 
     try:
         # Extract the roll angle from the data_line
@@ -56,10 +55,38 @@ def process_data(data_line):
             parts = data_line.split('Roll Angle:')
             if len(parts) == 2:
                 angle_part = parts[1].split('degrees')[0].strip()
-                roll_degrees = float(angle_part)
-                with roll_lock:
-                    roll_angle = roll_degrees
-                print(f"Processed Roll Angle: {roll_degrees:.2f} degrees")  # Debug
+                current_roll_angle = float(angle_part)
+
+                # Initialize previous_roll_angle if it's None
+                if previous_roll_angle is None:
+                    previous_roll_angle = current_roll_angle
+                    last_movement_time = time.time()  # Initialize the last movement time
+                    reset_performed = False
+
+                # Calculate the change in roll angle
+                delta_angle = current_roll_angle - previous_roll_angle
+
+                # Check if the change exceeds the threshold
+                if abs(delta_angle) >= MIN_CHANGE_THRESHOLD:
+                    with roll_lock:
+                        roll_angle = current_roll_angle
+                    print(f"Significant movement detected. Updated Roll Angle: {roll_angle:.2f} degrees")  # Debug
+                    last_movement_time = time.time()  # Update the last movement time
+                    reset_performed = False  # Allow future resets
+                else:
+                    # Ignore minor changes to discard drift
+                    print(f"Minor change detected ({delta_angle:.2f} degrees). Ignoring drift.")  # Debug
+
+                    # Check if it's time to reset
+                    if (time.time() - last_movement_time >= RESET_DURATION) and not reset_performed:
+                        print(f"No significant movement for {RESET_DURATION} seconds. Resetting chip and recentering.")
+                        reset_mpu6050()
+                        with roll_lock:
+                            roll_angle = 0.0  # Recenter the view
+                        reset_performed = True  # Prevent multiple resets until next movement
+
+                # Update previous_roll_angle
+                previous_roll_angle = current_roll_angle
             else:
                 print(f"Unexpected data format: {data_line}")
         else:
