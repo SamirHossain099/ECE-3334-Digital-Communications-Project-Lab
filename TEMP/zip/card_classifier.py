@@ -344,7 +344,7 @@ def main():
     def use_webcam():
         root.destroy()
         # Use webcam
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(1)
         if not cap.isOpened():
             print("Error: Could not open webcam.")
             return
@@ -367,7 +367,7 @@ def main():
                 if rank_symbol is not None and suit_symbol is not None:
                     result = match_templates(rank_symbol, suit_symbol, rank_templates, suit_templates)
                     # Display the final cropped card with result
-                    cv2.putText(card_cropped, result, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), 2)
+                    cv2.putText(card_cropped, result, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (128, 128, 60), 2)
                     cv2.imshow("Final Result", card_cropped)
                     cv2.waitKey(0)
                     cv2.destroyAllWindows()
