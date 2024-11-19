@@ -19,8 +19,8 @@ import numpy as np
 import shared_data  # Import shared_data to access roll_angle
 
 class VideoStream:
-    def __init__(self, camera1_folder="C:/temp/camera1/", camera2_folder="C:/temp/camera2/"):
-    # def __init__(self, camera1_folder="D:/Lab/Terminal1/", camera2_folder="D:/Lab/Terminal2/"):
+    # def __init__(self, camera1_folder="C:/temp/camera1/", camera2_folder="C:/temp/camera2/"):
+    def __init__(self, camera1_folder="D:/Lab/Terminal1/", camera2_folder="D:/Lab/Terminal2/"):
         self.camera1_folder = camera1_folder
         self.camera2_folder = camera2_folder
         self.running = True
@@ -92,8 +92,9 @@ class VideoStream:
             x_end = x_offset + view_width
             cropped_frame = stitched_frame[y_start:y_end, x_start:x_end]
 
+            cropped_frame_resize = cv2.resize(cropped_frame, (1280, 720))
             # Display the cropped frame
-            cv2.imshow("Panned Camera Feed", cropped_frame)
+            cv2.imshow("Panned Camera Feed", cropped_frame_resize)
 
             # Cleanup old frames periodically
             self.cleanup_old_frames(self.camera1_folder, "camera1")
