@@ -92,8 +92,9 @@ class VideoStream:
             x_end = x_offset + view_width
             cropped_frame = stitched_frame[y_start:y_end, x_start:x_end]
 
+            cropped_frame_resize = cv2.resize(cropped_frame, (1280, 720))
             # Display the cropped frame
-            cv2.imshow("Panned Camera Feed", cropped_frame)
+            cv2.imshow("Panned Camera Feed", cropped_frame_resize)
 
             # Cleanup old frames periodically
             self.cleanup_old_frames(self.camera1_folder, "camera1")
