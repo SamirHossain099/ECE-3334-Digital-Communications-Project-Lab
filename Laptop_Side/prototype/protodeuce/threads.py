@@ -53,31 +53,31 @@ import os
 def start_gstreamer_commands():
     # Define the GStreamer commands
     #Samir's File Path
-    # cmd1 = (
-    #     'gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp, payload=96" '
-    #     '! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! '
-    #     'multifilesink location="D:/Lab/Terminal1/camera1_frame_%05d.jpg"'
-    # )
-    
-    # cmd2 = (
-    #     'gst-launch-1.0 udpsrc port=5001 caps="application/x-rtp, payload=96" '
-    #     '! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! '
-    #     'multifilesink location="D:/Lab/Terminal2/camera2_frame_%05d.jpg"'
-    # )
-    
-    
-    # Nick's File Path
     cmd1 = (
         'gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp, payload=96" '
         '! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! '
-        'multifilesink location="C:/temp/camera1/camera1_frame_%05d.jpg"'
+        'multifilesink location="D:/Lab/Terminal1/camera1_frame_%05d.jpg"'
     )
     
     cmd2 = (
         'gst-launch-1.0 udpsrc port=5001 caps="application/x-rtp, payload=96" '
         '! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! '
-        'multifilesink location="C:/temp/camera2/camera2_frame_%05d.jpg"'
+        'multifilesink location="D:/Lab/Terminal2/camera2_frame_%05d.jpg"'
     )
+    
+    
+    # Nick's File Path
+    # cmd1 = (
+    #     'gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp, payload=96" '
+    #     '! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! '
+    #     'multifilesink location="C:/temp/camera1/camera1_frame_%05d.jpg"'
+    # )
+    
+    # cmd2 = (
+    #     'gst-launch-1.0 udpsrc port=5001 caps="application/x-rtp, payload=96" '
+    #     '! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! '
+    #     'multifilesink location="C:/temp/camera2/camera2_frame_%05d.jpg"'
+    # )
     
     # Optionally, specify the full path to gst-launch-1.0 if it's not in PATH
     # Example:

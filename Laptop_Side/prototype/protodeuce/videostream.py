@@ -20,7 +20,9 @@ import shared_data  # Import shared_data to access roll_angle
 from hud import HUD  # Import the HUD class
 
 class VideoStream:
-    def __init__(self, camera1_folder="C:/temp/camera1/", camera2_folder="C:/temp/camera2/"):
+    # def __init__(self, camera1_folder="C:/temp/camera1/", camera2_folder="C:/temp/camera2/"):
+    def __init__(self, camera1_folder="D:/Lab/Terminal1/", camera2_folder="D:/Lab/Terminal2/"):
+
         self.camera1_folder = camera1_folder
         self.camera2_folder = camera2_folder
         self.running = True
