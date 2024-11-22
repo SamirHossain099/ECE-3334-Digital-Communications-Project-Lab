@@ -52,54 +52,22 @@ class VideoStream:
                 time.sleep(0.1)
                 continue
 
-            # Resize frames if necessary to ensure they match
-            if frame1.shape != frame2.shape:
-                height = min(frame1.shape[0], frame2.shape[0])
-                width = min(frame1.shape[1], frame2.shape[1])
-                frame1 = cv2.resize(frame1, (width, height))
-                frame2 = cv2.resize(frame2, (width, height))
-
-            # Stitch frames side by side
-            stitched_frame = np.hstack((frame1, frame2))
-
-            # Resize stitched frame to consistent size, e.g., (1280, 480)
-            stitched_frame = cv2.resize(stitched_frame, (1280, 480))
-
-            # Get roll angle safely
-            with shared_data.roll_lock:
-                angle = shared_data.roll_angle
-
-            # Clamp the roll angle to -90 to +90 degrees
+            # Process frames (e.g., stitching, overlaying HUD)
+            stitched_frame = self.stitch_frames(frame1, frame2)
+            angle = shared_data.roll_angle  # Get the roll angle from shared data
             angle = max(min(angle, 90), -90)
-
-            # Map the roll angle to x_offset
-            frame_width = stitched_frame.shape[1]  # Width of stitched frame
-            view_width = 640  # Width of the display window
+            frame_width = stitched_frame.shape[1]
+            view_width = 640
             max_offset = frame_width - view_width
-
-            # Map roll angle to x_offset
             x_offset = int(((-angle + 90) / 180) * max_offset)
-
-            # Ensure x_offset is within bounds
             x_offset = max(0, min(x_offset, max_offset))
-
-            # Debug: Print roll_angle and x_offset
-            print(f"Update Image - Roll Angle: {angle:.2f}, X Offset: {x_offset}")  # Debug
-
-            # Crop the image to the current view
-            y_start = 0  # Assuming full height
+            y_start = 0
             y_end = stitched_frame.shape[0]
             x_start = x_offset
             x_end = x_offset + view_width
             cropped_frame = stitched_frame[y_start:y_end, x_start:x_end]
-
-            # Convert cropped_frame to a format suitable for Pygame
             cropped_frame_rgb = cv2.cvtColor(cropped_frame, cv2.COLOR_BGR2RGB)
-
-            # Overlay the HUD on the cropped frame
             hud_frame = self.hud.draw_on_frame(cropped_frame_rgb)
-
-            # Convert back to BGR for OpenCV display
             hud_frame_bgr = cv2.cvtColor(hud_frame, cv2.COLOR_RGB2BGR)
 
             # Display the frame with HUD overlay

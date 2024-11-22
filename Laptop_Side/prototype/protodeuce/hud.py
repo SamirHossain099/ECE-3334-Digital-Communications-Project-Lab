@@ -25,7 +25,7 @@ class HUD:
         self.clock = pygame.time.Clock()
 
         # Load and resize the static map image
-        original_map_image = pygame.image.load("C:\\Users\\deuce\\Pictures\\Screenshots\\hudmap.png")
+        original_map_image = pygame.image.load("Laptop_Side/prototype/protodeuce/hudmap.png")
         self.map_image = pygame.transform.scale(original_map_image, (200, 200))
         self.map_rect = self.map_image.get_rect(topleft=(self.WIDTH - 220, 20))
 
