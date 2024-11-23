@@ -7,6 +7,55 @@ import time
 import numpy as np
 import shared_data  # Import shared_data to access roll_angle, steering, throttle, and brake
 
+# Import ctypes for Windows API interactions
+import ctypes
+from ctypes import wintypes
+
+def make_window_borderless(window_name):
+    """
+    Makes the specified OpenCV window borderless on Windows.
+    
+    Parameters:
+        window_name (str): The exact name of the OpenCV window.
+    """
+    # Allow some time for the window to be created
+    time.sleep(0.1)
+    
+    # Define necessary Windows constants
+    GWL_STYLE = -16
+    WS_CAPTION = 0x00C00000
+    WS_THICKFRAME = 0x00040000
+    WS_SYSMENU = 0x00080000
+    WS_MINIMIZEBOX = 0x00020000
+    WS_MAXIMIZEBOX = 0x00010000
+    
+    SWP_NOMOVE = 0x0002
+    SWP_NOSIZE = 0x0001
+    SWP_NOZORDER = 0x0004
+    SWP_FRAMECHANGED = 0x0020
+    
+    # Find the window handle (HWND) based on the window name
+    hwnd = ctypes.windll.user32.FindWindowW(None, window_name)
+    
+    if hwnd != 0:
+        # Get the current window style
+        style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_STYLE)
+        
+        # Remove title bar and borders by modifying the window style
+        style &= ~(WS_CAPTION | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX)
+        
+        # Apply the new style
+        ctypes.windll.user32.SetWindowLongW(hwnd, GWL_STYLE, style)
+        
+        # Update the window to apply changes
+        ctypes.windll.user32.SetWindowPos(
+            hwnd, 
+            None, 
+            0, 0, 0, 0, 
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED
+        )
+    else:
+        print(f"Window '{window_name}' not found!")
 
 class VideoStream:
     def __init__(self, camera1_folder="D:/Lab/Terminal1/", camera2_folder="D:/Lab/Terminal2/"):
@@ -34,6 +83,19 @@ class VideoStream:
         # Define speed parameters
         max_speed = 60.0  # Maximum speed in km/h
         damping_factor = 0.1  # Smoothing factor for speed transitions
+
+        window_name = "Panned Camera Feed with HUD"
+
+        # Create the OpenCV window
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+
+        # Display an initial blank frame to ensure the window is created
+        blank_frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        cv2.imshow(window_name, blank_frame)
+        cv2.waitKey(1)  # Necessary to create the window
+
+        # Make the window borderless
+        make_window_borderless(window_name)
 
         while self.running:
             # Get the latest frames from both camera feeds
@@ -87,13 +149,13 @@ class VideoStream:
             cropped_frame = stitched_frame[y_start:y_end, x_start:x_end]
 
             # Resize to desired display size
-            cropped_frame_resize = cv2.resize(cropped_frame, (1920, 1080))  # Adjust as needed
+            cropped_frame_resize = cv2.resize(cropped_frame, (1280, 720))  # Adjust as needed
 
             # Overlay HUD on the cropped_frame_resize
             hud_frame = self.add_hud(cropped_frame_resize, max_speed, damping_factor)
 
             # Display the frame with HUD
-            cv2.imshow("Panned Camera Feed with HUD", hud_frame)
+            cv2.imshow(window_name, hud_frame)
 
             # Cleanup old frames periodically
             self.cleanup_old_frames(self.camera1_folder, "camera1")
@@ -181,7 +243,7 @@ class VideoStream:
         frame_height, frame_width = frame.shape[:2]
 
         # Define HUD scaling based on frame size
-        center_x = int(frame_width * 0.25)  # Adjusted to 25% from the left for closer placement
+        center_x = int(frame_width * 0.25)  # 25% from the left for closer placement
         center_y = int(frame_height * 0.95)  # 95% from the top (5% padding from bottom)
         radius = int(min(frame_width, frame_height) * 0.12)  # 12% of the smaller dimension
 
