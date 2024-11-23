@@ -7,9 +7,9 @@ import time
 import numpy as np
 import shared_data  # Import shared_data to access roll_angle, steering, throttle, and brake
 
+
 class VideoStream:
     def __init__(self, camera1_folder="D:/Lab/Terminal1/", camera2_folder="D:/Lab/Terminal2/"):
-    # def __init__(self, camera1_folder="D:/temp/camera1/", camera2_folder="D:/temp/camera2/"): #Deuce
         self.camera1_folder = camera1_folder
         self.camera2_folder = camera2_folder
         self.running = True
@@ -86,6 +86,7 @@ class VideoStream:
             x_end = x_offset + view_width
             cropped_frame = stitched_frame[y_start:y_end, x_start:x_end]
 
+            # Resize to desired display size
             cropped_frame_resize = cv2.resize(cropped_frame, (1920, 1080))  # Adjust as needed
 
             # Overlay HUD on the cropped_frame_resize
@@ -144,11 +145,15 @@ class VideoStream:
 
     def draw_speed_meter(self, frame, speed, max_speed):
         """Draw a semicircular tachometer-like speed meter on the frame."""
-        # Define position and size
-        center_x, center_y = 100, 700  # Positioned near bottom-left corner
-        radius = 100
+        # Get frame dimensions
+        frame_height, frame_width = frame.shape[:2]
 
-        # Draw outer semicircle (180 to 360 degrees)
+        # Define HUD scaling based on frame size
+        center_x = int(frame_width * 0.08)  # 8% from the left
+        center_y = int(frame_height * 0.95)  # 95% from the top (5% padding from bottom)
+        radius = int(min(frame_width, frame_height) * 0.12)  # 12% of the smaller dimension
+
+        # Draw outer semicircle (180 to 360 degrees) with white color
         cv2.ellipse(frame, (center_x, center_y), (radius, radius), 0, 180, 360, (255, 255, 255), 2)
 
         # Draw the needle based on speed
@@ -160,25 +165,28 @@ class VideoStream:
         angle_deg = 270 + (speed / max_speed) * 90  # 180 to 360 degrees
         angle_deg = max(min(angle_deg, 360), 180)   # Clamp to 180-360
         angle_rad = np.deg2rad(angle_deg)
-        needle_length = radius - 30
+        needle_length = radius - int(radius * 0.3)  # 70% of radius
         needle_x = int(center_x + needle_length * np.cos(angle_rad))
         needle_y = int(center_y + needle_length * np.sin(angle_rad))
         cv2.line(frame, (center_x, center_y), (needle_x, needle_y), (0, 0, 255), 3)
 
         # Optional: Draw a filled circle at the center
-        cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)
+        cv2.circle(frame, (center_x, center_y), int(radius * 0.05), (0, 0, 255), -1)
 
-        # Remove numbers from the meter (as per user request)
-        # Previously, speed labels were added; now they are omitted
+        # No numerical labels or tick marks as per user request
 
     def draw_wheel_position(self, frame, steering):
-        """Draw a wheel position indicator on the frame."""
-        # Define position and size
-        start_x, start_y = 300, 700  # Lowered position near bottom-center
-        end_x, end_y = 300, 600      # Vertical line upwards from the new start
+        """Draw a semicircular red arrow indicating wheel position on the frame."""
+        # Get frame dimensions
+        frame_height, frame_width = frame.shape[:2]
 
-        # Remove the white base line by commenting out the following line
-        # cv2.line(frame, (start_x, start_y), (end_x, end_y), (255, 255, 255), 2)
+        # Define HUD scaling based on frame size
+        center_x = int(frame_width * 0.25)  # Adjusted to 25% from the left for closer placement
+        center_y = int(frame_height * 0.95)  # 95% from the top (5% padding from bottom)
+        radius = int(min(frame_width, frame_height) * 0.12)  # 12% of the smaller dimension
+
+        # Draw outer semicircle (180 to 360 degrees) with white color
+        cv2.ellipse(frame, (center_x, center_y), (radius, radius), 0, 180, 360, (255, 255, 255), 2)
 
         # Calculate wheel position angle
         # steering ranges from 0.0 (full left) to 2.0 (full right), 1.0 is center
@@ -186,14 +194,16 @@ class VideoStream:
         wheel_position = (steering - 1.0) * 30  # -30 to +30 degrees
         wheel_position = max(min(wheel_position, 30), -30)  # Clamp to -30 to +30
 
-        # Draw wheel position arrow
-        arrow_length = 50
-        angle_rad = np.deg2rad(wheel_position)
-        arrow_x = int(end_x + arrow_length * np.sin(angle_rad))
-        arrow_y = int(end_y - arrow_length * np.cos(angle_rad))
-        cv2.arrowedLine(frame, (end_x, end_y), (arrow_x, arrow_y), (0, 255, 0), 3, tipLength=0.3)
+        # Map wheel position to angle for the arrow
+        # -30 degrees -> 240 degrees
+        # 0 degrees -> 270 degrees
+        # +30 degrees -> 300 degrees
+        arrow_angle_deg = 270 + (wheel_position / 30.0) * 30  # 240 to 300 degrees
+        arrow_angle_rad = np.deg2rad(arrow_angle_deg)
+        arrow_length = radius - int(radius * 0.3)  # 70% of radius
+        arrow_x = int(center_x + arrow_length * np.cos(arrow_angle_rad))
+        arrow_y = int(center_y + arrow_length * np.sin(arrow_angle_rad))
+        cv2.arrowedLine(frame, (center_x, center_y), (arrow_x, arrow_y), (0, 0, 255), 3, tipLength=0.3)
 
-        # Put wheel position text
-        # Remove the degree symbol by updating the text format
-        cv2.putText(frame, f"Wheel: {int(wheel_position)}", (start_x - 80, end_y - 20),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        # No "Wheel:" text as per user request
+
