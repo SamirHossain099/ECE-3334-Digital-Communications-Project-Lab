@@ -1,22 +1,11 @@
-#Open two terminals and write the below commands in each terminal, make sure to have gstreamer installed
-#Terminal 1
-#gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp, payload=96" ! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! multifilesink location="D:/Lab/Terminal1/camera1_frame_%05d.jpg"
-#gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp, payload=96" ! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! multifilesink location="C:/temp/camera1/camera1_frame_%05d.jpg"
-
-#Terminal 2
-#gst-launch-1.0 udpsrc port=5001 caps="application/x-rtp, payload=96" ! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! multifilesink location="D:/Lab/Terminal2/camera2_frame_%05d.jpg"
-#gst-launch-1.0 udpsrc port=5001 caps="application/x-rtp, payload=96" ! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! multifilesink location="C:/temp/camera2/camera2_frame_%05d.jpg"
-
-
-### Make sure to change file save and retrive location so at the end of two ^ Terminal commands change save directory
-### Below camera1_folder, camera2_folder edit the retrive directories
+# videostream.py
 
 import cv2
 import glob
 import os
 import time
 import numpy as np
-import shared_data  # Import shared_data to access roll_angle
+import shared_data  # Import shared_data to access roll_angle, steering, and throttle
 
 class VideoStream:
     # def __init__(self, camera1_folder="C:/temp/camera1/", camera2_folder="C:/temp/camera2/"):
@@ -92,9 +81,13 @@ class VideoStream:
             x_end = x_offset + view_width
             cropped_frame = stitched_frame[y_start:y_end, x_start:x_end]
 
-            cropped_frame_resize = cv2.resize(cropped_frame, (1280, 720))
-            # Display the cropped frame
-            cv2.imshow("Panned Camera Feed", cropped_frame_resize)
+            cropped_frame_resize = cv2.resize(cropped_frame, (1280, 720))  # Adjust as needed
+
+            # Overlay HUD on the cropped_frame_resize
+            hud_frame = self.add_hud(cropped_frame_resize)
+
+            # Display the frame with HUD
+            cv2.imshow("Panned Camera Feed with HUD", hud_frame)
 
             # Cleanup old frames periodically
             self.cleanup_old_frames(self.camera1_folder, "camera1")
@@ -109,3 +102,87 @@ class VideoStream:
             time.sleep(0.01)
 
         cv2.destroyAllWindows()
+
+    def add_hud(self, frame):
+        """Add HUD elements to the frame."""
+        # Retrieve steering and throttle values safely
+        with shared_data.steering_lock:
+            steering = shared_data.steering_value
+        with shared_data.throttle_lock:
+            throttle = shared_data.throttle_value
+
+        # Map throttle to speed (0-60)
+        # throttle_value ranges from 2 (no speed) to 0 (max speed)
+        speed = ((2.0 - throttle) / 2.0) * 60.0  # Linear mapping
+
+        # Map steering to wheel position
+        # steering_value ranges from 0.0 (full left) to 2.0 (full right), 1.0 is center
+        wheel_position = (steering - 1.0) * 30  # -30 to +30 degrees
+
+        # Draw speedometer
+        self.draw_speedometer(frame, speed)
+
+        # Draw wheel position
+        self.draw_wheel_position(frame, wheel_position)
+
+        return frame
+
+    def draw_speedometer(self, frame, speed):
+        """Draw a semicircular speedometer on the frame."""
+        # Define position and size
+        center_x, center_y = 100, 650  # Moved down to y=650
+        radius = 100
+
+        # Draw outer semicircle (180 to 360 degrees)
+        cv2.ellipse(frame, (center_x, center_y), (radius, radius), 0, 180, 360, (255, 255, 255), 2)
+
+        # Draw ticks and labels
+        for i in range(0, 61, 10):
+            angle_deg = 180 + (180 * (i / 60.0))  # 180 to 360 degrees
+            angle_rad = np.deg2rad(angle_deg)
+            tick_length = 10 if i % 20 else 20
+            start_x = int(center_x + (radius - tick_length) * np.cos(angle_rad))
+            start_y = int(center_y + (radius - tick_length) * np.sin(angle_rad))
+            end_x = int(center_x + radius * np.cos(angle_rad))
+            end_y = int(center_y + radius * np.sin(angle_rad))
+            cv2.line(frame, (start_x, start_y), (end_x, end_y), (255, 255, 255), 2)
+
+            # Put speed labels
+            label = f"{i}"
+            label_x = int(center_x + (radius - 40) * np.cos(angle_rad))
+            label_y = int(center_y + (radius - 40) * np.sin(angle_rad))
+            cv2.putText(frame, label, (label_x - 10, label_y + 5),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+        # Draw the needle
+        angle_deg = 180 + (180 * (speed / 60.0))  # Map speed to angle
+        angle_rad = np.deg2rad(angle_deg)
+        needle_length = radius - 30
+        needle_x = int(center_x + needle_length * np.cos(angle_rad))
+        needle_y = int(center_y + needle_length * np.sin(angle_rad))
+        cv2.line(frame, (center_x, center_y), (needle_x, needle_y), (0, 0, 255), 3)
+
+        # Put speed text
+        cv2.putText(frame, f"Speed: {int(speed)} km/h", (center_x - 70, center_y - 130),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+    def draw_wheel_position(self, frame, wheel_position):
+        """Draw a wheel position indicator on the frame."""
+        # Define position and size
+        start_x, start_y = 300, 700  # Lowered position near bottom-center
+        end_x, end_y = 300, 600  # Vertical line upwards from the new start
+
+        # Draw base line
+        cv2.line(frame, (start_x, start_y), (end_x, end_y), (255, 255, 255), 2)
+
+        # Draw wheel position arrow
+        arrow_length = 50
+        angle_rad = np.deg2rad(wheel_position)
+        arrow_x = int(end_x + arrow_length * np.sin(angle_rad))
+        arrow_y = int(end_y - arrow_length * np.cos(angle_rad))
+        cv2.arrowedLine(frame, (end_x, end_y), (arrow_x, arrow_y), (0, 255, 0), 3, tipLength=0.3)
+
+        # Put wheel position text
+        # Replace the degree symbol with 'deg' to avoid rendering issues
+        cv2.putText(frame, f"Wheel: {int(wheel_position)} deg", (start_x - 80, end_y - 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)

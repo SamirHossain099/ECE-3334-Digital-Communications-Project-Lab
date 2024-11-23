@@ -1,6 +1,9 @@
+# sendcontrols.py
+
 import pygame
 import sys
 import socket
+import shared_data  # Import shared_data to update steering and throttle
 
 class Send_Control_Data:
     def __init__(self):
@@ -19,11 +22,23 @@ class Send_Control_Data:
         while running:
             pygame.event.pump()
             
-            axis_value = [self.joystick.get_axis(i)+1 for i in range(self.joystick.get_numaxes())]
-            axis_value_str = ','.join([f"{value:.4f}" for value in axis_value])
+            axis_values = [self.joystick.get_axis(i) + 1 for i in range(self.joystick.get_numaxes())]
+            axis_values_str = ','.join([f"{value:.4f}" for value in axis_values])
             
-            self.sock.sendto(axis_value_str.encode(), self.server_address)
-            # print(f"Sent: {axis_value_str}")
+            self.sock.sendto(axis_values_str.encode(), self.server_address)
+            # print(f"Sent: {axis_values_str}")
+            
+            # Update shared_data with steering and throttle
+            if len(axis_values) >= 2:
+                steering = axis_values[0]  # First value: Steering
+                throttle = axis_values[1]  # Second value: Throttle
+                
+                with shared_data.steering_lock:
+                    shared_data.steering_value = steering
+                with shared_data.throttle_lock:
+                    shared_data.throttle_value = throttle
+                # Debug: Print updated values
+                # print(f"Updated Steering: {steering}, Throttle: {throttle}")
             
             pygame.time.wait(10)
             
