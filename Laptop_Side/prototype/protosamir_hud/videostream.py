@@ -10,6 +10,7 @@ import shared_data  # Import shared_data to access roll_angle, steering, and thr
 class VideoStream:
     # def __init__(self, camera1_folder="C:/temp/camera1/", camera2_folder="C:/temp/camera2/"):
     def __init__(self, camera1_folder="D:/Lab/Terminal1/", camera2_folder="D:/Lab/Terminal2/"):
+    # def __init__(self, camera1_folder="D:/temp/camera1/", camera2_folder="D:/temp/camera2/"): #Deuce
         self.camera1_folder = camera1_folder
         self.camera2_folder = camera2_folder
         self.running = True
@@ -81,7 +82,7 @@ class VideoStream:
             x_end = x_offset + view_width
             cropped_frame = stitched_frame[y_start:y_end, x_start:x_end]
 
-            cropped_frame_resize = cv2.resize(cropped_frame, (1280, 720))  # Adjust as needed
+            cropped_frame_resize = cv2.resize(cropped_frame, (1920, 1080))  # Adjust as needed
 
             # Overlay HUD on the cropped_frame_resize
             hud_frame = self.add_hud(cropped_frame_resize)

@@ -16,17 +16,17 @@ import os
 def start_gstreamer_commands():
     # Define the GStreamer commands
     #Samir's File Path
-    cmd1 = (
-        'gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp, payload=96" '
-        '! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! '
-        'multifilesink location="D:/Lab/Terminal1/camera1_frame_%05d.jpg"'
-    )
+    # cmd1 = (
+    #     'gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp, payload=96" '
+    #     '! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! '
+    #     'multifilesink location="D:/Lab/Terminal1/camera1_frame_%05d.jpg"'
+    # )
     
-    cmd2 = (
-        'gst-launch-1.0 udpsrc port=5001 caps="application/x-rtp, payload=96" '
-        '! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! '
-        'multifilesink location="D:/Lab/Terminal2/camera2_frame_%05d.jpg"'
-    )
+    # cmd2 = (
+    #     'gst-launch-1.0 udpsrc port=5001 caps="application/x-rtp, payload=96" '
+    #     '! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! '
+    #     'multifilesink location="D:/Lab/Terminal2/camera2_frame_%05d.jpg"'
+    # )
     
     
     # Nick's File Path
@@ -47,6 +47,19 @@ def start_gstreamer_commands():
     # gst_path = "C:/gstreamer/1.0/x86_64/bin/gst-launch-1.0.exe"
     # cmd1 = f'"{gst_path}" udpsrc port=5000 caps="application/x-rtp, payload=96" ...'
     # cmd2 = f'"{gst_path}" udpsrc port=5001 caps="application/x-rtp, payload=96" ...'
+
+    # Deuce's File Path
+    cmd1 = (
+        'gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp, payload=96" '
+        '! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! '
+        'multifilesink location="D:/temp/camera1/camera1_frame_%05d.jpg"'
+    )
+    
+    cmd2 = (
+        'gst-launch-1.0 udpsrc port=5001 caps="application/x-rtp, payload=96" '
+        '! rtph264depay ! avdec_h264 ! videoconvert ! jpegenc ! '
+        'multifilesink location="D:/temp/camera2/camera2_frame_%05d.jpg"'
+    )
 
     # Start Terminal 1 for Camera 1
     subprocess.Popen(
