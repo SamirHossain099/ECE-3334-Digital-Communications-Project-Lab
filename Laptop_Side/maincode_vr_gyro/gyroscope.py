@@ -18,7 +18,7 @@ class Gyroscope:
 
         # Variables for reset logic
         self.last_movement_time = time.time()
-        self.RESET_DURATION = 3.0  # Time in seconds to wait before resetting
+        self.RESET_DURATION = 10.0  # Time in seconds to wait before resetting
         self.reset_performed = False
 
     def reset_mpu6050(self):

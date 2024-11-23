@@ -14,7 +14,7 @@ class Send_Control_Data:
         self.joystick = pygame.joystick.Joystick(0)
         self.joystick.init()
         print(f"Connected to joystick: {self.joystick.get_name()}")
-        self.server_address = ('10.161.189.106', 8765)  # Jetson TTU IP and port
+        self.server_address = ('10.171.224.212', 8765)  # Jetson TTU IP and port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def send_joystick_data(self):
