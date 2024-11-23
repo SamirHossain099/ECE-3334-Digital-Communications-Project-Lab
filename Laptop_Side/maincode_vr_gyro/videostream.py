@@ -9,9 +9,8 @@ import shared_data  # Import shared_data to access roll_angle, steering, throttl
 
 
 class VideoStream:
-    # def __init__(self, camera1_folder="D:/Lab/Terminal1/", camera2_folder="D:/Lab/Terminal2/"):
-    def __init__(self, camera1_folder="D:/temp/camera1/", camera2_folder="D:/temp/camera2/"): #Deuce
-
+    # Updated camera folders for easier testing
+    def __init__(self, camera1_folder="D:/temp/camera1/", camera2_folder="D:/temp/camera2/"):  # Deuce
         self.camera1_folder = camera1_folder
         self.camera2_folder = camera2_folder
         self.running = True
@@ -137,24 +136,28 @@ class VideoStream:
         # Clamp current_speed to -max_speed to +max_speed
         self.current_speed = max(min(self.current_speed, max_speed), -max_speed)
 
-        # Draw speed meter
-        self.draw_speed_meter(frame, self.current_speed, max_speed)
-
-        # Draw wheel position
-        self.draw_wheel_position(frame, steering)
-
-        return frame
-
-    def draw_speed_meter(self, frame, speed, max_speed):
-        """Draw a semicircular tachometer-like speed meter on the frame."""
         # Get frame dimensions
         frame_height, frame_width = frame.shape[:2]
 
         # Define HUD scaling based on frame size
-        center_x = int(frame_width * 0.08)  # 8% from the left
-        center_y = int(frame_height * 0.95)  # 95% from the top (5% padding from bottom)
         radius = int(min(frame_width, frame_height) * 0.12)  # 12% of the smaller dimension
+        gap = int(frame_width * 0.02)  # 2% of frame width as gap between meters
 
+        # Calculate centers for both meters
+        center_x_speed = int(frame_width / 2 - radius - gap / 2)
+        center_x_wheel = int(frame_width / 2 + radius + gap / 2)
+        center_y = int(frame_height * 0.95)  # 95% from the top (5% padding from bottom)
+
+        # Draw speed meter
+        self.draw_speed_meter(frame, self.current_speed, max_speed, center_x_speed, center_y, radius)
+
+        # Draw wheel position
+        self.draw_wheel_position(frame, steering, center_x_wheel, center_y, radius)
+
+        return frame
+
+    def draw_speed_meter(self, frame, speed, max_speed, center_x, center_y, radius):
+        """Draw a semicircular tachometer-like speed meter on the frame."""
         # Draw outer semicircle (180 to 360 degrees) with white color
         cv2.ellipse(frame, (center_x, center_y), (radius, radius), 0, 180, 360, (255, 255, 255), 2)
 
@@ -170,23 +173,15 @@ class VideoStream:
         needle_length = radius - int(radius * 0.3)  # 70% of radius
         needle_x = int(center_x + needle_length * np.cos(angle_rad))
         needle_y = int(center_y + needle_length * np.sin(angle_rad))
-        cv2.line(frame, (center_x, center_y), (needle_x, needle_y), (0, 0, 255), 3)
+        cv2.line(frame, (center_x, center_y), (needle_x, needle_y), (0, 0, 255), 5)  # Increased thickness to 5
 
         # Optional: Draw a filled circle at the center
         cv2.circle(frame, (center_x, center_y), int(radius * 0.05), (0, 0, 255), -1)
 
         # No numerical labels or tick marks as per user request
 
-    def draw_wheel_position(self, frame, steering):
+    def draw_wheel_position(self, frame, steering, center_x, center_y, radius):
         """Draw a semicircular red arrow indicating wheel position on the frame."""
-        # Get frame dimensions
-        frame_height, frame_width = frame.shape[:2]
-
-        # Define HUD scaling based on frame size
-        center_x = int(frame_width * 0.25)  # 25% from the left for closer placement
-        center_y = int(frame_height * 0.95)  # 95% from the top (5% padding from bottom)
-        radius = int(min(frame_width, frame_height) * 0.12)  # 12% of the smaller dimension
-
         # Draw outer semicircle (180 to 360 degrees) with white color
         cv2.ellipse(frame, (center_x, center_y), (radius, radius), 0, 180, 360, (255, 255, 255), 2)
 
@@ -205,7 +200,7 @@ class VideoStream:
         arrow_length = radius - int(radius * 0.3)  # 70% of radius
         arrow_x = int(center_x + arrow_length * np.cos(arrow_angle_rad))
         arrow_y = int(center_y + arrow_length * np.sin(arrow_angle_rad))
-        cv2.arrowedLine(frame, (center_x, center_y), (arrow_x, arrow_y), (0, 0, 255), 3, tipLength=0.3)
+        cv2.arrowedLine(frame, (center_x, center_y), (arrow_x, arrow_y), (0, 0, 255), 5, tipLength=0.3)  # Increased thickness to 5
 
         # No "Wheel:" text as per user request
 
