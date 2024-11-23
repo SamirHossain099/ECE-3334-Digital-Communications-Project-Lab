@@ -9,7 +9,9 @@ import shared_data  # Import shared_data to access roll_angle, steering, throttl
 
 
 class VideoStream:
-    def __init__(self, camera1_folder="D:/Lab/Terminal1/", camera2_folder="D:/Lab/Terminal2/"):
+    # def __init__(self, camera1_folder="D:/Lab/Terminal1/", camera2_folder="D:/Lab/Terminal2/"):
+    def __init__(self, camera1_folder="D:/temp/camera1/", camera2_folder="D:/temp/camera2/"): #Deuce
+
         self.camera1_folder = camera1_folder
         self.camera2_folder = camera2_folder
         self.running = True
