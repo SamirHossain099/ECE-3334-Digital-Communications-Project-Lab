@@ -5,15 +5,15 @@ import glob
 import os
 import time
 import numpy as np
-import shared_data  # Import shared_data to access roll_angle, steering, and throttle
+import shared_data  # Import shared_data to access roll_angle, steering, throttle, and brake
 
 class VideoStream:
-    # def __init__(self, camera1_folder="C:/temp/camera1/", camera2_folder="C:/temp/camera2/"):
     def __init__(self, camera1_folder="D:/Lab/Terminal1/", camera2_folder="D:/Lab/Terminal2/"):
     # def __init__(self, camera1_folder="D:/temp/camera1/", camera2_folder="D:/temp/camera2/"): #Deuce
         self.camera1_folder = camera1_folder
         self.camera2_folder = camera2_folder
         self.running = True
+        self.current_speed = 0.0  # Initialize current speed
 
     def get_latest_frame(self, folder, prefix):
         """Get the latest frame in a folder with a specified prefix."""
@@ -31,6 +31,10 @@ class VideoStream:
             os.remove(f)
 
     def run(self):
+        # Define speed parameters
+        max_speed = 60.0  # Maximum speed in km/h
+        damping_factor = 0.1  # Smoothing factor for speed transitions
+
         while self.running:
             # Get the latest frames from both camera feeds
             frame1 = self.get_latest_frame(self.camera1_folder, "camera1")
@@ -85,7 +89,7 @@ class VideoStream:
             cropped_frame_resize = cv2.resize(cropped_frame, (1920, 1080))  # Adjust as needed
 
             # Overlay HUD on the cropped_frame_resize
-            hud_frame = self.add_hud(cropped_frame_resize)
+            hud_frame = self.add_hud(cropped_frame_resize, max_speed, damping_factor)
 
             # Display the frame with HUD
             cv2.imshow("Panned Camera Feed with HUD", hud_frame)
@@ -104,77 +108,83 @@ class VideoStream:
 
         cv2.destroyAllWindows()
 
-    def add_hud(self, frame):
+    def add_hud(self, frame, max_speed, damping_factor):
         """Add HUD elements to the frame."""
-        # Retrieve steering and throttle values safely
+        # Retrieve steering, throttle, and brake values safely
         with shared_data.steering_lock:
             steering = shared_data.steering_value
         with shared_data.throttle_lock:
             throttle = shared_data.throttle_value
+        with shared_data.brake_lock:
+            brake = shared_data.brake_value
 
-        # Map throttle to speed (0-60)
-        # throttle_value ranges from 2 (no speed) to 0 (max speed)
-        speed = ((2.0 - throttle) / 2.0) * 60.0  # Linear mapping
+        # Map throttle and brake to speed change
+        # Throttle and brake both range from 0.0 to 2.0, where lower throttle means higher speed
+        # Lower brake means less braking
+        # Compute desired speed change: throttle_effect - brake_effect
+        throttle_effect = (2.0 - throttle)  # 0.0 (max throttle) to 2.0 (no throttle)
+        brake_effect = (2.0 - brake)        # 0.0 (max brake) to 2.0 (no brake)
 
-        # Map steering to wheel position
-        # steering_value ranges from 0.0 (full left) to 2.0 (full right), 1.0 is center
-        wheel_position = (steering - 1.0) * 30  # -30 to +30 degrees
+        # Calculate net speed effect
+        net_speed_effect = throttle_effect - brake_effect  # Range: -2.0 to +2.0
 
-        # Draw speedometer
-        self.draw_speedometer(frame, speed)
+        # Update current_speed with smoothing
+        self.current_speed += (net_speed_effect * max_speed / 2.0 - self.current_speed) * damping_factor
+
+        # Clamp current_speed to -max_speed to +max_speed
+        self.current_speed = max(min(self.current_speed, max_speed), -max_speed)
+
+        # Draw speed meter
+        self.draw_speed_meter(frame, self.current_speed, max_speed)
 
         # Draw wheel position
-        self.draw_wheel_position(frame, wheel_position)
+        self.draw_wheel_position(frame, steering)
 
         return frame
 
-    def draw_speedometer(self, frame, speed):
-        """Draw a semicircular speedometer on the frame."""
+    def draw_speed_meter(self, frame, speed, max_speed):
+        """Draw a semicircular tachometer-like speed meter on the frame."""
         # Define position and size
-        center_x, center_y = 100, 650  # Moved down to y=650
+        center_x, center_y = 100, 700  # Positioned near bottom-left corner
         radius = 100
 
         # Draw outer semicircle (180 to 360 degrees)
         cv2.ellipse(frame, (center_x, center_y), (radius, radius), 0, 180, 360, (255, 255, 255), 2)
 
-        # Draw ticks and labels
-        for i in range(0, 61, 10):
-            angle_deg = 180 + (180 * (i / 60.0))  # 180 to 360 degrees
-            angle_rad = np.deg2rad(angle_deg)
-            tick_length = 10 if i % 20 else 20
-            start_x = int(center_x + (radius - tick_length) * np.cos(angle_rad))
-            start_y = int(center_y + (radius - tick_length) * np.sin(angle_rad))
-            end_x = int(center_x + radius * np.cos(angle_rad))
-            end_y = int(center_y + radius * np.sin(angle_rad))
-            cv2.line(frame, (start_x, start_y), (end_x, end_y), (255, 255, 255), 2)
-
-            # Put speed labels
-            label = f"{i}"
-            label_x = int(center_x + (radius - 40) * np.cos(angle_rad))
-            label_y = int(center_y + (radius - 40) * np.sin(angle_rad))
-            cv2.putText(frame, label, (label_x - 10, label_y + 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-
-        # Draw the needle
-        angle_deg = 180 + (180 * (speed / 60.0))  # Map speed to angle
+        # Draw the needle based on speed
+        # Map speed to angle (180 to 360 degrees)
+        # speed ranges from -max_speed to +max_speed
+        # speed=0 -> 270 degrees (up)
+        # speed=+max_speed -> 360 degrees (right)
+        # speed=-max_speed -> 180 degrees (left)
+        angle_deg = 270 + (speed / max_speed) * 90  # 180 to 360 degrees
+        angle_deg = max(min(angle_deg, 360), 180)   # Clamp to 180-360
         angle_rad = np.deg2rad(angle_deg)
         needle_length = radius - 30
         needle_x = int(center_x + needle_length * np.cos(angle_rad))
         needle_y = int(center_y + needle_length * np.sin(angle_rad))
         cv2.line(frame, (center_x, center_y), (needle_x, needle_y), (0, 0, 255), 3)
 
-        # Put speed text
-        cv2.putText(frame, f"Speed: {int(speed)} km/h", (center_x - 70, center_y - 130),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        # Optional: Draw a filled circle at the center
+        cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)
 
-    def draw_wheel_position(self, frame, wheel_position):
+        # Remove numbers from the meter (as per user request)
+        # Previously, speed labels were added; now they are omitted
+
+    def draw_wheel_position(self, frame, steering):
         """Draw a wheel position indicator on the frame."""
         # Define position and size
         start_x, start_y = 300, 700  # Lowered position near bottom-center
-        end_x, end_y = 300, 600  # Vertical line upwards from the new start
+        end_x, end_y = 300, 600      # Vertical line upwards from the new start
 
-        # Draw base line
-        cv2.line(frame, (start_x, start_y), (end_x, end_y), (255, 255, 255), 2)
+        # Remove the white base line by commenting out the following line
+        # cv2.line(frame, (start_x, start_y), (end_x, end_y), (255, 255, 255), 2)
+
+        # Calculate wheel position angle
+        # steering ranges from 0.0 (full left) to 2.0 (full right), 1.0 is center
+        # Map steering to angle: -30 to +30 degrees
+        wheel_position = (steering - 1.0) * 30  # -30 to +30 degrees
+        wheel_position = max(min(wheel_position, 30), -30)  # Clamp to -30 to +30
 
         # Draw wheel position arrow
         arrow_length = 50
@@ -184,6 +194,6 @@ class VideoStream:
         cv2.arrowedLine(frame, (end_x, end_y), (arrow_x, arrow_y), (0, 255, 0), 3, tipLength=0.3)
 
         # Put wheel position text
-        # Replace the degree symbol with 'deg' to avoid rendering issues
-        cv2.putText(frame, f"Wheel: {int(wheel_position)} deg", (start_x - 80, end_y - 20),
+        # Remove the degree symbol by updating the text format
+        cv2.putText(frame, f"Wheel: {int(wheel_position)}", (start_x - 80, end_y - 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
