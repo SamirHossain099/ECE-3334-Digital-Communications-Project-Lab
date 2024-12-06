@@ -130,7 +130,7 @@ def rotate_image_to_align_endpoints(image, end1, end2, parent=None):
                              borderMode=cv2.BORDER_CONSTANT, borderValue=(0,0,0))
     print("Image rotated successfully.")
 
-    # Display the rotated image
+    # Display the rotated image and wait for key press
     display_results("Rotated Worm", rotated, scale=2, parent=parent)
 
     return rotated, M
@@ -262,7 +262,7 @@ def display_results(title, image, scale=1, parent=None):
         parent (Tkinter widget, optional): Parent window for modal behavior.
     """
     if image is None or image.size == 0:
-        print(f"Cannot display {title}: Image is invalid.")
+        print("Empty image. Cannot display.")
         return
 
     # Calculate new dimensions based on the scaling factor
@@ -290,6 +290,10 @@ def display_results(title, image, scale=1, parent=None):
 
     # Optionally, set the window size to fit the image
     window.geometry(f"{new_dimensions[0]}x{new_dimensions[1]}")
+
+    # Wait for a key press
+    cv2.waitKey(1)
+    cv2.destroyAllWindows()
 
 def compute_centerline_spline(centerline_coords):
     """
