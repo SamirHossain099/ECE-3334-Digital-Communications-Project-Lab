@@ -12,6 +12,7 @@ from skimage.morphology import skeletonize
 import networkx as nx
 import threading
 import random
+import matplotlib.pyplot as plt
 
 # -------------------- Helper Functions -------------------- #
 
@@ -336,10 +337,12 @@ def straighten_worm(segmented_worm, backbone_cp, half_width=20):
 def segment_worm(frame, parent=None):
     print("Segmenting worm...")
     frame = cv2.resize(frame, (640, 480))
-    display_results("Original Frame", frame, scale=2, parent=parent)
+    # display_results("Original Frame", frame, scale=2, parent=parent)
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    display_results("Grayscale Image", gray, scale=2, parent=parent)
+    # display_results("Grayscale Image", gray, scale=2, parent=parent)
+    plt.hist(gray.ravel(), 256, [0, 256], log = True)
+    plt.show()
 
     gray_equalized = cv2.equalizeHist(gray)
     display_results("Contrast Enhanced Image", gray_equalized, scale=2, parent=parent)
