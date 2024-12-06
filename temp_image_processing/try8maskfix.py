@@ -518,15 +518,15 @@ def segment_worm(frame, parent=None):
 
     # Convert to grayscale
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    display_results("Grayscale Image", gray, scale=2, parent=parent)
+    # display_results("Grayscale Image", gray, scale=2, parent=parent)
 
     # Enhance contrast using histogram equalization
     gray_equalized = cv2.equalizeHist(gray)
-    display_results("Contrast Enhanced Image", gray_equalized, scale=2, parent=parent)
+    # display_results("Contrast Enhanced Image", gray_equalized, scale=2, parent=parent)
 
     # Apply Gaussian Blur to reduce noise
     blurred = cv2.GaussianBlur(gray_equalized, (5, 5), 0)
-    display_results("Blurred Image", blurred, scale=2, parent=parent)
+    # display_results("Blurred Image", blurred, scale=2, parent=parent)
 
     # Apply adaptive thresholding to create binary image
     block_size = 15  # Must be odd number >=3
@@ -534,12 +534,12 @@ def segment_worm(frame, parent=None):
     binary = cv2.adaptiveThreshold(
         blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY_INV, block_size, C)
-    display_results("Binary Image", binary, scale=2, parent=parent)
+    # display_results("Binary Image", binary, scale=2, parent=parent)
 
     # Morphological operations to remove small noise and fill holes
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     opened = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=2)
-    display_results("Morphologically Cleaned Image", opened, scale=2, parent=parent)
+    # display_results("Morphologically Cleaned Image", opened, scale=2, parent=parent)
 
     # Find contours using OpenCV
     contours, hierarchy = cv2.findContours(
@@ -575,8 +575,13 @@ def segment_worm(frame, parent=None):
     cv2.drawContours(worm_mask, [worm_contour], -1, 255, -1)
     display_results("Worm Mask", worm_mask, scale=2, parent=parent)
 
+    filter5 = worm_mask.copy()
+    
+    worm_mask_filtered5 = cv2.medianBlur(filter5, 5)
+    display_results("Worm Mask Median Filter5", worm_mask_filtered5, scale=2, parent=parent)
+    
     # Apply the mask to extract the worm
-    segmented_worm = cv2.bitwise_and(frame, frame, mask=worm_mask)
+    segmented_worm = cv2.bitwise_and(frame, frame, mask=worm_mask_filtered5)
     display_results("Segmented Worm", segmented_worm, scale=2, parent=parent)
 
     # Get the bounding rectangle of the worm contour
@@ -719,33 +724,33 @@ def process_video(video_path, parent=None):
     if segmented_worm is None:
         return None, None, None, None
 
-    # Straighten the worm (trace boundary, find ends, find centerline, rotate)
-    straightened_worm, transformed_centerline, rotated_end1, rotated_end2 = straighten_worm(segmented_worm, parent=parent)
-    if straightened_worm is None:
-        return None, None, None, None
+    # # Straighten the worm (trace boundary, find ends, find centerline, rotate)
+    # straightened_worm, transformed_centerline, rotated_end1, rotated_end2 = straighten_worm(segmented_worm, parent=parent)
+    # if straightened_worm is None:
+    #     return None, None, None, None
 
-    # Slice the worm
-    slices, slice_image = slice_worm(straightened_worm, transformed_centerline, rotated_end1, rotated_end2, parent=parent)
+    # # Slice the worm
+    # slices, slice_image = slice_worm(straightened_worm, transformed_centerline, rotated_end1, rotated_end2, parent=parent)
 
-    # Display the slices image in the GUI
-    display_result_slices(slice_image)
+    # # Display the slices image in the GUI
+    # display_result_slices(slice_image)
 
-    # Output the additional data (rotated_centerline, rotated_end1, rotated_end2, slices)
-    # These can be stored or processed further as needed
-    print(f"Rotated Centerline Coordinates: {transformed_centerline}")
-    print(f"Rotated Endpoints: {rotated_end1}, {rotated_end2}")
-    print(f"Number of slices: {len(slices)}")
+    # # Output the additional data (rotated_centerline, rotated_end1, rotated_end2, slices)
+    # # These can be stored or processed further as needed
+    # print(f"Rotated Centerline Coordinates: {transformed_centerline}")
+    # print(f"Rotated Endpoints: {rotated_end1}, {rotated_end2}")
+    # print(f"Number of slices: {len(slices)}")
 
-    # Store the outputs globally or pass them to other components as needed
-    global global_rotated_centerline, global_rotated_endpoints, global_slices
-    global_rotated_centerline = transformed_centerline
-    global_rotated_endpoints = (rotated_end1, rotated_end2)
-    global_slices = slices
+    # # Store the outputs globally or pass them to other components as needed
+    # global global_rotated_centerline, global_rotated_endpoints, global_slices
+    # global_rotated_centerline = transformed_centerline
+    # global_rotated_endpoints = (rotated_end1, rotated_end2)
+    # global_slices = slices
 
-    # Display the final result in the GUI
-    display_result(frame, slice_image)  # Display the slices image instead of straightened worm
+    # # Display the final result in the GUI
+    # display_result(frame, slice_image)  # Display the slices image instead of straightened worm
 
-    return straightened_worm, transformed_centerline, rotated_end1, rotated_end2
+    # return straightened_worm, transformed_centerline, rotated_end1, rotated_end2
 
 # -------------------- GUI Integration -------------------- #
 
