@@ -314,7 +314,7 @@ def straighten_channel(channel, backbone_cp, half_width=20, visualization_img=No
                 straightened_channel[i, w + half_width] = gray[sy_int, sx_int]
 
         # Display all or every nth slicing line
-        if DEBUG_MODE and visualization_img is not None and i % 2 == 0:
+        if DEBUG_MODE and visualization_img is not None and i % 10 == 0:
             p1 = (int(cx - half_width*nx), int(cy - half_width*ny))
             p2 = (int(cx + half_width*nx), int(cy + half_width*ny))
             cv2.line(vis_img, p1, p2, (0,255,0), 1)
