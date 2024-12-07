@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 from scipy.stats import ks_2samp
 
-def histogram_matching_from_images(image1_path, image2_path, image3_path):
+def histogram_matching_from_images(image1_path, image2_path, image3):
     """
     Matches the histogram of the mismatched image to the reference histograms of the other two.
     
@@ -17,7 +17,6 @@ def histogram_matching_from_images(image1_path, image2_path, image3_path):
     # Load the images
     image1 = cv2.imread(image1_path, cv2.IMREAD_GRAYSCALE)
     image2 = cv2.imread(image2_path, cv2.IMREAD_GRAYSCALE)
-    image3 = cv2.imread(image3_path, cv2.IMREAD_GRAYSCALE)
 
     # Check if images were loaded correctly
     if image1 is None or image2 is None or image3 is None:
@@ -36,11 +35,20 @@ def histogram_matching_from_images(image1_path, image2_path, image3_path):
     # Identify the mismatched histogram using the Kolmogorov-Smirnov test
     ks1 = ks_2samp(hist1, hist3).statistic
     ks2 = ks_2samp(hist2, hist3).statistic
-    mismatched_cdf = cdf3 if ks1 > 0.05 or ks2 > 0.05 else None
+
+    print(ks1, ks2)
+
+    mismatched_cdf = cdf3 if ks1 > 0.3 or ks2 > 0.3 else None
+
+    OriginalSetting = True
 
     if mismatched_cdf is None:
+        OriginalSetting = True
         print("Histograms are already similar. No adjustment needed.")
-        return image3
+        return image3, OriginalSetting
+    else: 
+        OriginalSetting = False
+        print("Histograms are not similar. Adjusting the mismatched image...")2
 
     # Create the reference CDF as the average of the two similar histograms
     reference_cdf = (cdf1 + cdf2) / 2
@@ -51,7 +59,7 @@ def histogram_matching_from_images(image1_path, image2_path, image3_path):
     # Apply the mapping to the mismatched image
     remapped_image = cv2.LUT(image3, mapping.astype(np.uint8))
 
-    return remapped_image
+    return remapped_image, OriginalSetting
 
 # Example usage
 if __name__ == "__main__":

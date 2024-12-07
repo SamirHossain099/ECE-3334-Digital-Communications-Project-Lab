@@ -13,6 +13,7 @@ import networkx as nx
 import threading
 import random
 import matplotlib.pyplot as plt
+from scipy.stats import ks_2samp
 
 # -------------------- Helper Functions -------------------- #
 
@@ -334,31 +335,202 @@ def straighten_worm(segmented_worm, backbone_cp, half_width=20):
 
 # -------------------- Main Functions -------------------- #
 
-def segment_worm(frame, parent=None):
+# def segment_worm(frame, parent=None):
+#     print("Segmenting worm...")
+#     frame = cv2.resize(frame, (640, 480))
+#     # display_results("Original Frame", frame, scale=2, parent=parent)
+
+#     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+#     # display_results("Grayscale Image", gray, scale=2, parent=parent)
+#     plt.hist(gray.ravel(), 256, [0, 256], log = True)
+#     plt.show()
+
+#     gray_equalized = cv2.equalizeHist(gray)
+#     display_results("Contrast Enhanced Image", gray_equalized, scale=2, parent=parent)
+
+#     blurred = cv2.GaussianBlur(gray_equalized, (3, 3), 0)
+#     display_results("Blurred Image", blurred, scale=2, parent=parent)
+
+#     block_size = 15  
+#     C = 3
+#     binary = cv2.adaptiveThreshold(
+#         blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+#         cv2.THRESH_BINARY_INV, block_size, C)
+#     display_results("Binary Image", binary, scale=2, parent=parent)
+
+#     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+#     opened = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=2)
+#     display_results("Morphologically Cleaned Image", opened, scale=2, parent=parent)
+
+#     contours, hierarchy = cv2.findContours(
+#         opened, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+#     print(f"Total Contours Found: {len(contours)}")
+
+#     if not contours:
+#         messagebox.showerror("Error", "No contours found.")
+#         return None, None, None, None, None
+
+#     worm_contour = None
+#     max_length = 0
+#     for idx, cnt in enumerate(contours):
+#         length = cv2.arcLength(cnt, closed=False)
+#         x_cnt, y_cnt, w_cnt, h_cnt = cv2.boundingRect(cnt)
+#         aspect_ratio = float(h_cnt)/w_cnt if w_cnt != 0 else 0
+#         print(f"Contour {idx+1}: Length={length:.2f}, Aspect Ratio={aspect_ratio:.2f}")
+#         if length > max_length and aspect_ratio > 0.5:
+#             max_length = length
+#             worm_contour = cnt
+
+#     if worm_contour is None:
+#         messagebox.showerror("Error", "Worm contour could not be detected.")
+#         return None, None, None, None, None
+
+#     print(f"Selected Worm Contour Length: {max_length:.2f}")
+
+#     worm_mask = np.zeros_like(gray)
+#     cv2.drawContours(worm_mask, [worm_contour], -1, 255, -1)
+#     display_results("Worm Mask", worm_mask, scale=2, parent=parent)
+
+#     # Apply median filter to smooth the mask
+#     worm_mask_filtered5 = cv2.medianBlur(worm_mask, 5)
+#     display_results("Worm Mask Median Filter5", worm_mask_filtered5, scale=2, parent=parent)
+
+#     segmented_worm = cv2.bitwise_and(frame, frame, mask=worm_mask_filtered5)
+#     display_results("Segmented Worm", segmented_worm, scale=2, parent=parent)
+
+#     # Get the bounding rectangle of the worm contour
+#     x, y, w, h = cv2.boundingRect(worm_contour)
+#     x, y = max(x, 0), max(y, 0)
+#     x_end, y_end = min(x + w, frame.shape[1]), min(y + h, frame.shape[0])
+
+#     # Crop the segmented worm image to the bounding rectangle
+#     cropped_worm = segmented_worm[y:y_end, x:x_end]
+#     display_results("Cropped Worm", cropped_worm, scale=2, parent=parent)
+
+#     print(f"Cropped worm shape: {cropped_worm.shape}, bounding box: ({x},{y}) to ({x_end},{y_end})")
+
+#     return worm_mask_filtered5, worm_contour, cropped_worm, x, y
+
+# def segment_worm(frame, OriginalSettings=True, parent=None):
+#     print("Segmenting worm...")
+#     frame = cv2.resize(frame, (640, 480))
+#     display_results("Original Frame", frame, scale=2, parent=parent)
+
+#     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+#     display_results("Grayscale Image", gray, scale=2, parent=parent)
+
+#     gray_equalized = cv2.equalizeHist(gray)
+#     display_results("Contrast Enhanced Image", gray_equalized, scale=2, parent=parent)
+
+
+#     blurred = cv2.GaussianBlur(gray_equalized, (3, 3), 1)
+#     display_results("Blurred Image", blurred, scale=2, parent=parent)
+
+#     block_size = 15  
+#     C = 3
+#     binary = cv2.adaptiveThreshold(
+#         blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+#         cv2.THRESH_BINARY_INV, block_size, C)
+#     display_results("Binary Image", binary, scale=2, parent=parent)
+
+#     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+#     print(f"Kernel: {kernel}")
+#     opened = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=1)
+#     display_results("Morphologically Cleaned Image", opened, scale=2, parent=parent)
+
+#     contours, hierarchy = cv2.findContours(
+#         opened, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+#     print(f"Total Contours Found: {len(contours)}")
+
+#     if not contours:
+#         messagebox.showerror("Error", "No contours found.")
+#         return None, None, None, None, None
+
+#     worm_contour = None
+#     max_length = 0
+#     for idx, cnt in enumerate(contours):
+#         length = cv2.arcLength(cnt, closed=False)
+#         x_cnt, y_cnt, w_cnt, h_cnt = cv2.boundingRect(cnt)
+#         aspect_ratio = float(h_cnt)/w_cnt if w_cnt != 0 else 0
+#         print(f"Contour {idx+1}: Length={length:.2f}, Aspect Ratio={aspect_ratio:.2f}")
+#         if length > max_length and aspect_ratio > 0.5:
+#             max_length = length
+#             worm_contour = cnt
+
+#     if worm_contour is None:
+#         messagebox.showerror("Error", "Worm contour could not be detected.")
+#         return None, None, None, None, None
+
+#     print(f"Selected Worm Contour Length: {max_length:.2f}")
+
+#     worm_mask = np.zeros_like(gray)
+#     cv2.drawContours(worm_mask, [worm_contour], -1, 255, -1)
+#     display_results("Worm Mask", worm_mask, scale=2, parent=parent)
+
+#     # Apply median filter to smooth the mask
+#     worm_mask_filtered5 = cv2.medianBlur(worm_mask, 7)
+#     display_results("Worm Mask Median Filter5", worm_mask_filtered5, scale=2, parent=parent)
+
+#     segmented_worm = cv2.bitwise_and(frame, frame, mask=worm_mask_filtered5)
+
+#     display_results("Segmented Worm", segmented_worm, scale=2, parent=parent)
+
+#     # Get the bounding rectangle of the worm contour
+#     x, y, w, h = cv2.boundingRect(worm_contour)
+#     x, y = max(x, 0), max(y, 0)
+#     x_end, y_end = min(x + w, frame.shape[1]), min(y + h, frame.shape[0])
+
+#     # Crop the segmented worm image to the bounding rectangle
+#     cropped_worm = segmented_worm[y:y_end, x:x_end]
+#     display_results("Cropped Worm", cropped_worm, scale=2, parent=parent)
+
+#     print(f"Cropped worm shape: {cropped_worm.shape}, bounding box: ({x},{y}) to ({x_end},{y_end})")
+
+#     return worm_mask_filtered5, worm_contour, cropped_worm, x, y
+def segment_worm(frame, OriginalSettings=True, parent=None):
     print("Segmenting worm...")
     frame = cv2.resize(frame, (640, 480))
-    # display_results("Original Frame", frame, scale=2, parent=parent)
+    display_results("Original Frame", frame, scale=2, parent=parent)
+    if OriginalSettings:
+        # Original settings
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        plt.hist(gray.ravel(), 256, [0, 256], log=True)
+        plt.show()
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # display_results("Grayscale Image", gray, scale=2, parent=parent)
-    plt.hist(gray.ravel(), 256, [0, 256], log = True)
-    plt.show()
+        gray_equalized = cv2.equalizeHist(gray)
+        display_results("Contrast Enhanced Image", gray_equalized, scale=2, parent=parent)
 
-    gray_equalized = cv2.equalizeHist(gray)
-    display_results("Contrast Enhanced Image", gray_equalized, scale=2, parent=parent)
+        blurred = cv2.GaussianBlur(gray_equalized, (3, 3), 0)
+        display_results("Blurred Image", blurred, scale=2, parent=parent)
 
-    blurred = cv2.GaussianBlur(gray_equalized, (3, 3), 0)
-    display_results("Blurred Image", blurred, scale=2, parent=parent)
+        kernel_size = (3, 3)
+        iterations = 2
+        median_blur_size = 5
 
-    block_size = 15  
+    else:
+        # Alternative settings
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        display_results("Grayscale Image", gray, scale=2, parent=parent)
+
+        gray_equalized = cv2.equalizeHist(gray)
+        display_results("Contrast Enhanced Image", gray_equalized, scale=2, parent=parent)
+
+        blurred = cv2.GaussianBlur(gray_equalized, (3, 3), 1)
+        display_results("Blurred Image", blurred, scale=2, parent=parent)
+
+        kernel_size = (5, 5)
+        iterations = 1
+        median_blur_size = 7
+
+    block_size = 15
     C = 3
     binary = cv2.adaptiveThreshold(
         blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY_INV, block_size, C)
     display_results("Binary Image", binary, scale=2, parent=parent)
 
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    opened = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=2)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, kernel_size)
+    opened = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=iterations)
     display_results("Morphologically Cleaned Image", opened, scale=2, parent=parent)
 
     contours, hierarchy = cv2.findContours(
@@ -374,8 +546,8 @@ def segment_worm(frame, parent=None):
     for idx, cnt in enumerate(contours):
         length = cv2.arcLength(cnt, closed=False)
         x_cnt, y_cnt, w_cnt, h_cnt = cv2.boundingRect(cnt)
-        aspect_ratio = float(h_cnt)/w_cnt if w_cnt != 0 else 0
-        print(f"Contour {idx+1}: Length={length:.2f}, Aspect Ratio={aspect_ratio:.2f}")
+        aspect_ratio = float(h_cnt) / w_cnt if w_cnt != 0 else 0
+        # print(f"Contour {idx+1}: Length={length:.2f}, Aspect Ratio={aspect_ratio:.2f}")
         if length > max_length and aspect_ratio > 0.5:
             max_length = length
             worm_contour = cnt
@@ -391,7 +563,7 @@ def segment_worm(frame, parent=None):
     display_results("Worm Mask", worm_mask, scale=2, parent=parent)
 
     # Apply median filter to smooth the mask
-    worm_mask_filtered5 = cv2.medianBlur(worm_mask, 5)
+    worm_mask_filtered5 = cv2.medianBlur(worm_mask, median_blur_size)
     display_results("Worm Mask Median Filter5", worm_mask_filtered5, scale=2, parent=parent)
 
     segmented_worm = cv2.bitwise_and(frame, frame, mask=worm_mask_filtered5)
@@ -410,6 +582,65 @@ def segment_worm(frame, parent=None):
 
     return worm_mask_filtered5, worm_contour, cropped_worm, x, y
 
+def histogram_matching_from_images(image1_path, image2_path, image3):
+    """
+    Matches the histogram of the mismatched image to the reference histograms of the other two.
+    
+    Parameters:
+        image1_path (str): File path for the first image.
+        image2_path (str): File path for the second image.
+        image3_path (str): File path for the third (potentially mismatched) image.
+    
+    Returns:
+        np.ndarray: The remapped image (mismatched image adjusted to match the reference histograms).
+    """
+    # Load the images
+    image1 = cv2.imread(image1_path, cv2.IMREAD_GRAYSCALE)
+    image2 = cv2.imread(image2_path, cv2.IMREAD_GRAYSCALE)
+
+    # Check if images were loaded correctly
+    if image1 is None or image2 is None or image3 is None:
+        raise ValueError("One or more images could not be loaded. Check the file paths.")
+
+    # Calculate histograms (256 bins for 8-bit grayscale)
+    hist1, _ = np.histogram(image1.ravel(), bins=256, range=(0, 256), density=True)
+    hist2, _ = np.histogram(image2.ravel(), bins=256, range=(0, 256), density=True)
+    hist3, _ = np.histogram(image3.ravel(), bins=256, range=(0, 256), density=True)
+
+    # Normalize histograms and calculate cumulative distribution functions (CDFs)
+    cdf1 = np.cumsum(hist1)
+    cdf2 = np.cumsum(hist2)
+    cdf3 = np.cumsum(hist3)
+
+    # Identify the mismatched histogram using the Kolmogorov-Smirnov test
+    ks1 = ks_2samp(hist1, hist3).statistic
+    ks2 = ks_2samp(hist2, hist3).statistic
+
+    print(ks1, ks2)
+
+    mismatched_cdf = cdf3 if ks1 > 0.30 or ks2 > 0.30 else None
+
+    OriginalSetting = True
+
+    if mismatched_cdf is None:
+        OriginalSetting = True
+        print("Histograms are already similar. No adjustment needed.")
+        return image3, OriginalSetting
+    else: 
+        OriginalSetting = False
+        print("Histograms are not similar. Adjusting the mismatched image...")
+
+    # Create the reference CDF as the average of the two similar histograms
+    reference_cdf = (cdf1 + cdf2) / 2
+
+    # Compute the mapping function
+    mapping = np.interp(mismatched_cdf, reference_cdf, np.arange(256))
+
+    # Apply the mapping to the mismatched image
+    remapped_image = cv2.LUT(image3, mapping.astype(np.uint8))
+
+    return remapped_image, OriginalSetting
+
 def process_video(video_path, parent=None):
     print(f"Processing video: {video_path}")
     cap = cv2.VideoCapture(video_path)
@@ -421,8 +652,10 @@ def process_video(video_path, parent=None):
     if not ret:
         messagebox.showerror("Error", "Cannot read video file.")
         return
+  
+    frame, OriginalSetting = histogram_matching_from_images("temp_image_processing/Worm1.png", "temp_image_processing/Worm3.png", frame)
 
-    result = segment_worm(frame, parent=parent)
+    result = segment_worm(frame, OriginalSetting, parent=parent)
     if result is None:
         print("Worm segmentation failed.")
         return
