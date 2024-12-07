@@ -48,7 +48,7 @@ def histogram_matching_from_images(image1_path, image2_path, image3):
         return image3, OriginalSetting
     else: 
         OriginalSetting = False
-        print("Histograms are not similar. Adjusting the mismatched image...")2
+        print("Histograms are not similar. Adjusting the mismatched image...")
 
     # Create the reference CDF as the average of the two similar histograms
     reference_cdf = (cdf1 + cdf2) / 2
