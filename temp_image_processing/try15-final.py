@@ -16,7 +16,6 @@ DEBUG_MODE = True
 
 # -------------------- Helper Functions -------------------- #
 
-
 def display_results(title, image, scale=1, parent=None):
     if image is None or image.size == 0:
         if DEBUG_MODE:
@@ -42,6 +41,8 @@ def display_results(title, image, scale=1, parent=None):
     window.geometry(f"{new_dimensions[0]}x{new_dimensions[1]}")
 
 def skeletonize_worm(worm_mask):
+    if DEBUG_MODE:
+        print("Step 3 (Skeletonization): Performing morphological closing...")
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     closed_mask = cv2.morphologyEx(worm_mask, cv2.MORPH_CLOSE, kernel, iterations=2)
     if DEBUG_MODE:
@@ -70,7 +71,7 @@ def build_graph_from_skeleton(skeleton):
                         if neighbor in G.nodes:
                             G.add_edge((x, y), neighbor)
     if DEBUG_MODE:
-        print("Graph construction from skeleton complete.")
+        print("Built graph from skeleton.")
     return G
 
 def find_skeleton_endpoints(skeleton):
@@ -102,10 +103,9 @@ def extract_backbone_from_skeleton(skeleton):
             print("Not enough endpoints detected in skeleton.")
         return None
     
-    # If more than two endpoints, choose the pair with the maximum Euclidean distance
     if len(endpoints) > 2:
         if DEBUG_MODE:
-            print("Multiple endpoints detected. Selecting the two furthest apart.")
+            print("Multiple endpoints found. Selecting two furthest apart.")
         max_distance = 0
         endpoint_pair = (endpoints[0], endpoints[1])
         for i in range(len(endpoints)):
@@ -125,12 +125,12 @@ def extract_backbone_from_skeleton(skeleton):
         path = nx.shortest_path(G, source=endpoint_pair[0], target=endpoint_pair[1])
     except nx.NetworkXNoPath:
         if DEBUG_MODE:
-            print("No path found between skeleton endpoints.")
+            print("No path found between endpoints.")
         return None
     
     backbone_cp = np.array(path)
     if DEBUG_MODE:
-        print(f"Backbone extracted with {len(backbone_cp)} control points.")
+        print(f"Backbone extracted with {len(backbone_cp)} points.")
     return backbone_cp
 
 def refine_endpoints(backbone_cp, worm_mask):
@@ -168,20 +168,12 @@ def refine_endpoints(backbone_cp, worm_mask):
             sy_left = int(round(cy - w*ny))
             sx_right = int(round(cx + w*nx))
             sy_right = int(round(cy + w*ny))
-            if 0 <= sy_left < rows and 0 <= sx_left < cols:
-                if worm_mask[sy_left, sx_left] == 255:
-                    w_left = w
-                else:
-                    break
-            else:
+            if not (0 <= sy_left < rows and 0 <= sx_left < cols and worm_mask[sy_left, sx_left] == 255):
                 break
-            if 0 <= sy_right < rows and 0 <= sx_right < cols:
-                if worm_mask[sy_right, sx_right] == 255:
-                    w_right = w
-                else:
-                    break
-            else:
+            w_left = w
+            if not (0 <= sy_right < rows and 0 <= sx_right < cols and worm_mask[sy_right, sx_right] == 255):
                 break
+            w_right = w
         return w_left + w_right
 
     start_widths = [measure_width(i) for i in range(num_samples)]
@@ -200,67 +192,91 @@ def refine_endpoints(backbone_cp, worm_mask):
         if len(trimmed_cp) > trim_points + 2:
             trimmed_cp = trimmed_cp[trim_points:]
             if DEBUG_MODE:
-                print(f"Trimming {trim_points} points from the start of the backbone.")
+                print("Trimmed start of the backbone.")
     elif avg_end_width > avg_start_width + width_threshold:
         trim_points = 5
         if len(trimmed_cp) > trim_points + 2:
             trimmed_cp = trimmed_cp[:-trim_points]
             if DEBUG_MODE:
-                print(f"Trimming {trim_points} points from the end of the backbone.")
+                print("Trimmed end of the backbone.")
 
     return trimmed_cp
 
 def extract_backbone_skeleton(worm_mask, parent=None):
-    # Step 1 Visualization: Skeleton and Backbone
-    # ---------------------
     if DEBUG_MODE:
-        print("Performing skeletonization...")
+        print("Step 3: Skeletonization and Backbone Extraction")
     skeleton = skeletonize_worm(worm_mask)
-    if DEBUG_MODE:
-        display_results("Step 1a: Skeleton", skeleton, scale=2, parent=parent)
+    display_results("Step 3a: Skeleton", skeleton, scale=2, parent=parent)
 
     if DEBUG_MODE:
         print("Extracting backbone from skeleton...")
     backbone_cp = extract_backbone_from_skeleton(skeleton)
     if backbone_cp is None:
         if DEBUG_MODE:
-            print("Failed to extract backbone from skeleton.")
+            print("Failed to extract backbone.")
         return None
 
-    # Show endpoints and backbone path on the skeleton image
-    if DEBUG_MODE:
-        # Draw backbone on skeleton
-        disp = cv2.cvtColor(skeleton, cv2.COLOR_GRAY2BGR)
-        for p in backbone_cp.astype(int):
-            cv2.circle(disp, (p[0], p[1]), 2, (0, 255, 0), -1)
-        display_results("Step 1b: Backbone Points on Skeleton", disp, scale=2, parent=parent)
+    # Show backbone points on skeleton
+    disp = cv2.cvtColor(skeleton, cv2.COLOR_GRAY2BGR)
+    for p in backbone_cp.astype(int):
+        cv2.circle(disp, (p[0], p[1]), 2, (0, 255, 0), -1)
+    display_results("Step 3b: Backbone Points on Skeleton", disp, scale=2, parent=parent)
 
     # Refine endpoints
     backbone_cp = refine_endpoints(backbone_cp, worm_mask)
 
-    # Step 2 Visualization: Fitting a Spline
-    # --------------------------------------
-    if DEBUG_MODE and backbone_cp is not None and len(backbone_cp) > 3:
-        # Fit spline for visualization
-        tck, u = splprep([backbone_cp[:,0], backbone_cp[:,1]], s=0, k=min(3, len(backbone_cp)-1))
-        unew = np.linspace(0, 1, 200)
-        x_spline, y_spline = splev(unew, tck)
-        spline_img = cv2.cvtColor(worm_mask, cv2.COLOR_GRAY2BGR)
-        for i in range(len(x_spline)-1):
-            cv2.line(spline_img, (int(x_spline[i]), int(y_spline[i])), (int(x_spline[i+1]), int(y_spline[i+1])), (0,0,255), 1)
-        display_results("Step 2: Spline Fitted to Backbone", spline_img, scale=2, parent=parent)
+    # Step 4: Spline Fitting and Extension
+    if backbone_cp is not None and len(backbone_cp) > 3:
+        try:
+            tck, u = splprep([backbone_cp[:,0], backbone_cp[:,1]], s=0, k=min(3, len(backbone_cp)-1))
+            unew = np.linspace(0, 1, 200)
+            x_spline, y_spline = splev(unew, tck)
+            dx, dy = splev(unew, tck, der=1)
+
+            length = np.sqrt(dx**2 + dy**2)
+            dx /= (length + 1e-12)
+            dy /= (length + 1e-12)
+
+            # Extend the backbone at both ends
+            start_extension = 3
+            end_extension = 3
+
+            x_start_extended = x_spline[0] - start_extension * dx[0]
+            y_start_extended = y_spline[0] - start_extension * dy[0]
+            x_end_extended = x_spline[-1] + end_extension * dx[-1]
+            y_end_extended = y_spline[-1] + end_extension * dy[-1]
+
+            extended_backbone = np.vstack([
+                [x_start_extended, y_start_extended],
+                np.column_stack((x_spline, y_spline)),
+                [x_end_extended, y_end_extended]
+            ])
+            backbone_cp = extended_backbone
+
+            # Display the spline and extended backbone
+            spline_img = cv2.cvtColor(worm_mask, cv2.COLOR_GRAY2BGR)
+            for i in range(len(x_spline)-1):
+                cv2.line(spline_img, (int(x_spline[i]), int(y_spline[i])),
+                                    (int(x_spline[i+1]), int(y_spline[i+1])), (0,0,255), 1)
+            cv2.circle(spline_img, (int(x_start_extended), int(y_start_extended)), 3, (255,0,0), -1)
+            cv2.circle(spline_img, (int(x_end_extended), int(y_end_extended)), 3, (255,0,0), -1)
+            display_results("Step 4: Spline Fitted and Extended", spline_img, scale=2, parent=parent)
+
+        except Exception as e:
+            if DEBUG_MODE:
+                print(f"Spline fitting error in extension step: {e}")
 
     return backbone_cp
 
 def straighten_channel(channel, backbone_cp, half_width=20, visualization_img=None):
     if DEBUG_MODE:
-        print("Straightening a channel...")
+        print("Step 5: Straightening Channels (Sampling Lines) ...")
     gray = channel.copy()
     rows, cols = gray.shape
 
     if len(backbone_cp) < 4:
         if DEBUG_MODE:
-            print("Not enough backbone points for spline fitting.")
+            print("Not enough backbone points for spline.")
         return None
 
     try:
@@ -282,9 +298,7 @@ def straighten_channel(channel, backbone_cp, half_width=20, visualization_img=No
     straight_width = 2 * half_width
     straightened_channel = np.zeros((straight_height, straight_width), dtype=gray.dtype)
 
-    # Step 3 Visualization: Show sampling lines on the original image
-    # --------------------------------------------------------------
-    # We will draw a few perpendicular lines on visualization_img
+    # Show sampling lines on the original worm image
     if DEBUG_MODE and visualization_img is not None:
         vis_img = visualization_img.copy()
 
@@ -299,28 +313,26 @@ def straighten_channel(channel, backbone_cp, half_width=20, visualization_img=No
             if 0 <= sy_int < rows and 0 <= sx_int < cols:
                 straightened_channel[i, w + half_width] = gray[sy_int, sx_int]
 
+        # Display all or every nth slicing line
         if DEBUG_MODE and visualization_img is not None and i % 2 == 0:
-            # Draw a line representing the cross-section
             p1 = (int(cx - half_width*nx), int(cy - half_width*ny))
             p2 = (int(cx + half_width*nx), int(cy + half_width*ny))
             cv2.line(vis_img, p1, p2, (0,255,0), 1)
 
     if DEBUG_MODE and visualization_img is not None:
-        display_results("Step 3: Sampling Lines on Worm Image", vis_img, scale=2)
+        display_results("Step 5: Sampling Lines on Worm Image", vis_img, scale=2)
 
     return straightened_channel
 
 def determine_half_width(backbone_cp, worm_mask):
-    # backbone_cp: Nx2 array of backbone points (x, y)
-    # worm_mask: binary mask of the worm
-
-    # Fit a spline to backbone for smooth tangent direction
+    # Optional step if you want to automate half_width
+    if DEBUG_MODE:
+        print("Determining half_width automatically based on worm thickness.")
     tck, u = splprep([backbone_cp[:,0], backbone_cp[:,1]], s=0, k=min(3, len(backbone_cp)-1))
     unew = np.linspace(0, 1, 200)
     x_spline, y_spline = splev(unew, tck)
     dx, dy = splev(unew, tck, der=1)
 
-    # Normalize direction vectors
     length = np.sqrt(dx**2 + dy**2)
     dx /= (length + 1e-12)
     dy /= (length + 1e-12)
@@ -333,9 +345,7 @@ def determine_half_width(backbone_cp, worm_mask):
         nx, ny = -dy[i], dx[i]
 
         dist_left, dist_right = 0, 0
-
-        # Move outwards along nx, ny in both directions to find boundaries
-        for w in range(1, 500):  # use a large number; adjust if needed
+        for w in range(1, 500):
             sx_left = int(round(cx - w*nx))
             sy_left = int(round(cy - w*ny))
             if sx_left < 0 or sx_left >= cols or sy_left < 0 or sy_left >= rows or worm_mask[sy_left, sx_left] == 0:
@@ -353,37 +363,37 @@ def determine_half_width(backbone_cp, worm_mask):
         if width > max_width:
             max_width = width
 
-    # Add a buffer to ensure no edges are missed
     half_width = int(np.ceil(max_width / 2)) + 5
     return half_width
 
 def straighten_worm(segmented_worm, backbone_cp, half_width=20, parent=None):
     if DEBUG_MODE:
-        print("Straightening worm...")
+        print("Step 6: Straightening the Worm using the Backbone ...")
     if len(segmented_worm.shape) == 3 and segmented_worm.shape[2] == 3:
         b_channel, g_channel, r_channel = cv2.split(segmented_worm)
     else:
         b_channel, g_channel, r_channel = [segmented_worm.copy()], [segmented_worm.copy()], [segmented_worm.copy()]
 
-    # Straighten each channel (existing code)
-    straightened_b = straighten_channel(b_channel, backbone_cp, half_width)
+    # Show sampling lines on the segmented worm image
+    straightened_b = straighten_channel(b_channel, backbone_cp, half_width, visualization_img=segmented_worm)
     straightened_g = straighten_channel(g_channel, backbone_cp, half_width)
     straightened_r = straighten_channel(r_channel, backbone_cp, half_width)
 
     if straightened_b is None or straightened_g is None or straightened_r is None:
         if DEBUG_MODE:
-            print("Straightened color channels are empty.")
+            print("One of the channels could not be straightened.")
         return None
 
-    # Merge color channels
     straightened_color = cv2.merge([straightened_b, straightened_g, straightened_r])
+    if DEBUG_MODE:
+        display_results("Step 6a: Straightened Worm Before Rotation", straightened_color, scale=2, parent=parent)
 
     # Rotate the straightened color image
     rotated_color = cv2.rotate(straightened_color, cv2.ROTATE_90_CLOCKWISE)
     if DEBUG_MODE:
         print("Rotated the straightened worm by 90 degrees.")
 
-    # Straighten mask
+    # Straighten mask as well
     worm_mask = cv2.cvtColor(segmented_worm, cv2.COLOR_BGR2GRAY)
     straightened_mask = straighten_channel(worm_mask, backbone_cp, half_width)
 
@@ -392,7 +402,6 @@ def straighten_worm(segmented_worm, backbone_cp, half_width=20, parent=None):
             print("Straightened mask is empty.")
         return None
 
-    # Rotate mask
     rotated_mask = cv2.rotate(straightened_mask, cv2.ROTATE_90_CLOCKWISE)
     if DEBUG_MODE:
         print("Rotated the straightened mask by 90 degrees.")
@@ -400,38 +409,32 @@ def straighten_worm(segmented_worm, backbone_cp, half_width=20, parent=None):
     # Binarize mask
     _, binary_rotated_mask = cv2.threshold(rotated_mask, 1, 255, cv2.THRESH_BINARY)
     if DEBUG_MODE:
-        print("Converted rotated mask to binary image.")
+        print("Binarized rotated mask.")
 
     # Clean mask
     kernel_clean = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
     cleaned_mask = cv2.morphologyEx(binary_rotated_mask, cv2.MORPH_OPEN, kernel_clean, iterations=1)
     cleaned_mask = cv2.medianBlur(cleaned_mask, 5)
     if DEBUG_MODE:
-        print("Cleaned the mask using morphological operations and median filter.")
+        print("Cleaned mask with morphological operations and median filter.")
 
-    # Apply cleaned mask
     cleaned_worm = cv2.bitwise_and(rotated_color, rotated_color, mask=cleaned_mask)
     if DEBUG_MODE:
-        print("Applied cleaned mask to the rotated color image.")
+        print("Applied cleaned mask to get final straightened worm image.")
 
-    # --- OLD LENGTH MEASUREMENT REMOVED ---
-    # worm_length_pixels = np.sum(np.any(cleaned_mask > 0, axis=0))
-
-    # --- NEW LENGTH MEASUREMENT FROM BACKBONE ---
-    # backbone_cp is Nx2, (x, y) coordinates
+    # Measure length from backbone
     distances = np.sqrt(np.sum(np.diff(backbone_cp, axis=0)**2, axis=1))
     worm_length = np.sum(distances)
     if DEBUG_MODE:
         print(f"Measured worm length from backbone: {worm_length:.2f} pixels.")
 
-    # Display final result
-    display_results("Step 5: Final Straightened Worm", cleaned_worm, scale=2, parent=parent)
+    display_results("Step 7: Final Straightened Worm", cleaned_worm, scale=2, parent=parent)
 
     return cleaned_worm, worm_length
 
 def segment_worm(frame, OriginalSettings=True, parent=None):
-    # Always display the input frame
-    display_results("Original Frame", frame, scale=2, parent=parent)
+    # Step 1: Display Original Frame
+    display_results("Step 1: Original Frame", frame, scale=2, parent=parent)
     if DEBUG_MODE:
         print("Segmenting worm...")
 
@@ -439,32 +442,28 @@ def segment_worm(frame, OriginalSettings=True, parent=None):
     if OriginalSettings:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         if DEBUG_MODE:
+            print("Showing histogram...")
             plt.hist(gray.ravel(), 256, [0, 256], log=True)
             plt.show()
 
         gray_equalized = cv2.equalizeHist(gray)
-        if DEBUG_MODE:
-            display_results("Contrast Enhanced Image", gray_equalized, scale=2, parent=parent)
+        display_results("Step 2a: Contrast Enhanced Image", gray_equalized, scale=2, parent=parent)
 
         blurred = cv2.GaussianBlur(gray_equalized, (3, 3), 0)
-        if DEBUG_MODE:
-            display_results("Blurred Image", blurred, scale=2, parent=parent)
+        display_results("Step 2b: Blurred Image", blurred, scale=2, parent=parent)
 
         kernel_size = (3, 3)
         iterations = 2
         median_blur_size = 5
     else:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        if DEBUG_MODE:
-            display_results("Grayscale Image", gray, scale=2, parent=parent)
+        display_results("Step 2a: Grayscale Image", gray, scale=2, parent=parent)
 
         gray_equalized = cv2.equalizeHist(gray)
-        if DEBUG_MODE:
-            display_results("Contrast Enhanced Image", gray_equalized, scale=2, parent=parent)
+        display_results("Step 2b: Contrast Enhanced Image", gray_equalized, scale=2, parent=parent)
 
         blurred = cv2.GaussianBlur(gray_equalized, (3, 3), 1)
-        if DEBUG_MODE:
-            display_results("Blurred Image", blurred, scale=2, parent=parent)
+        display_results("Step 2c: Blurred Image", blurred, scale=2, parent=parent)
 
         kernel_size = (5, 5)
         iterations = 1
@@ -475,13 +474,11 @@ def segment_worm(frame, OriginalSettings=True, parent=None):
     binary = cv2.adaptiveThreshold(
         blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY_INV, block_size, C)
-    if DEBUG_MODE:
-        display_results("Binary Image", binary, scale=2, parent=parent)
+    display_results("Step 2d: Binary Image", binary, scale=2, parent=parent)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, kernel_size)
     opened = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=iterations)
-    if DEBUG_MODE:
-        display_results("Morphologically Cleaned Image", opened, scale=2, parent=parent)
+    display_results("Step 2e: Morphologically Cleaned Image", opened, scale=2, parent=parent)
 
     contours, hierarchy = cv2.findContours(
         opened, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -511,24 +508,21 @@ def segment_worm(frame, OriginalSettings=True, parent=None):
 
     worm_mask = np.zeros_like(gray)
     cv2.drawContours(worm_mask, [worm_contour], -1, 255, -1)
-    if DEBUG_MODE:
-        display_results("Worm Mask", worm_mask, scale=2, parent=parent)
+    display_results("Step 2f: Worm Mask", worm_mask, scale=2, parent=parent)
 
     worm_mask_filtered5 = cv2.medianBlur(worm_mask, median_blur_size)
-    if DEBUG_MODE:
-        display_results("Worm Mask Median Filter5", worm_mask_filtered5, scale=2, parent=parent)
+    display_results("Step 2g: Worm Mask Median Filter5", worm_mask_filtered5, scale=2, parent=parent)
 
     segmented_worm = cv2.bitwise_and(frame, frame, mask=worm_mask_filtered5)
-    if DEBUG_MODE:
-        display_results("Segmented Worm", segmented_worm, scale=2, parent=parent)
+    display_results("Step 2h: Segmented Worm", segmented_worm, scale=2, parent=parent)
 
     x, y, w, h = cv2.boundingRect(worm_contour)
     x, y = max(x, 0), max(y, 0)
     x_end, y_end = min(x + w, frame.shape[1]), min(y + h, frame.shape[0])
 
     cropped_worm = segmented_worm[y:y_end, x:x_end]
+    display_results("Step 2i: Cropped Worm", cropped_worm, scale=2, parent=parent)
     if DEBUG_MODE:
-        display_results("Cropped Worm", cropped_worm, scale=2, parent=parent)
         print(f"Cropped worm shape: {cropped_worm.shape}, bounding box: ({x},{y}) to ({x_end},{y_end})")
 
     return worm_mask_filtered5, worm_contour, cropped_worm, x, y
@@ -538,7 +532,7 @@ def histogram_matching_from_images(image1_path, image2_path, image3):
     image2 = cv2.imread(image2_path, cv2.IMREAD_GRAYSCALE)
 
     if image1 is None or image2 is None or image3 is None:
-        raise ValueError("One or more images could not be loaded. Check the file paths.")
+        raise ValueError("One or more images could not be loaded.")
 
     hist1, _ = np.histogram(image1.ravel(), bins=256, range=(0, 256), density=True)
     hist2, _ = np.histogram(image2.ravel(), bins=256, range=(0, 256), density=True)
@@ -552,31 +546,29 @@ def histogram_matching_from_images(image1_path, image2_path, image3):
     ks2 = ks_2samp(hist2, hist3).statistic
 
     if DEBUG_MODE:
-        print(ks1, ks2)
+        print("Histogram KS stats:", ks1, ks2)
 
     mismatched_cdf = cdf3 if ks1 > 0.30 or ks2 > 0.30 else None
-
     OriginalSetting = True
+    mapping = None
 
     if mismatched_cdf is None:
         OriginalSetting = True
         if DEBUG_MODE:
-            print("Histograms are already similar. No adjustment needed.")
-        return image3, OriginalSetting
-    else: 
+            print("No histogram adjustment needed.")
+        return image3, OriginalSetting, mapping
+    else:
         OriginalSetting = False
         if DEBUG_MODE:
-            print("Histograms are not similar. Adjusting the mismatched image...")
-
-    reference_cdf = (cdf1 + cdf2) / 2
-    mapping = np.interp(mismatched_cdf, reference_cdf, np.arange(256))
-    remapped_image = cv2.LUT(image3, mapping.astype(np.uint8))
-
-    return remapped_image, OriginalSetting
+            print("Adjusting histogram of the input image.")
+        reference_cdf = (cdf1 + cdf2) / 2
+        mapping = np.interp(mismatched_cdf, reference_cdf, np.arange(256)).astype(np.uint8)
+        remapped_image = cv2.LUT(image3, mapping)
+        return remapped_image, OriginalSetting, mapping
 
 def process_video(video_path, parent=None):
     if DEBUG_MODE:
-        print(f"Processing video: {video_path}")
+        print("Step 1: Loading and Processing Video")
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         messagebox.showerror("Error", "Cannot open video file.")
@@ -587,7 +579,7 @@ def process_video(video_path, parent=None):
         messagebox.showerror("Error", "Cannot read video file.")
         return
 
-    frame, OriginalSetting = histogram_matching_from_images("temp_image_processing/Worm1.png", "temp_image_processing/Worm3.png", frame)
+    frame, OriginalSetting, mapping = histogram_matching_from_images("temp_image_processing/Worm1.png", "temp_image_processing/Worm3.png", frame)
 
     result = segment_worm(frame, OriginalSetting, parent=parent)
     if result is None:
@@ -598,36 +590,51 @@ def process_video(video_path, parent=None):
 
     if worm_mask is None or worm_contour is None or cropped_worm is None:
         if DEBUG_MODE:
-            print("Worm mask or contour could not be generated.")
+            print("No worm mask or contour generated.")
         return
 
-    backbone_cp = extract_backbone_skeleton(worm_mask)
+    backbone_cp = extract_backbone_skeleton(worm_mask, parent=parent)
     if backbone_cp is not None and len(backbone_cp) > 0:
-        if DEBUG_MODE:
-            disp = cv2.cvtColor(worm_mask, cv2.COLOR_GRAY2BGR)
-            for p in backbone_cp.astype(int):
-                if np.all(np.isfinite(p)):
-                    cv2.circle(disp, (p[0], p[1]), 2, (0, 0, 255), -1)
-            display_results("Skeleton-Based Backbone Control Points", disp, scale=2, parent=parent)
-
         backbone_cp_adjusted = backbone_cp.copy()
         backbone_cp_adjusted[:,0] -= x
         backbone_cp_adjusted[:,1] -= y
         backbone_cp_adjusted[:,0] = np.clip(backbone_cp_adjusted[:,0], 0, cropped_worm.shape[1]-1)
         backbone_cp_adjusted[:,1] = np.clip(backbone_cp_adjusted[:,1], 0, cropped_worm.shape[0]-1)
 
-        # Automatically determine half_width from the worm_mask and backbone
-        local_half_width = determine_half_width(backbone_cp_adjusted, cv2.cvtColor(cropped_worm, cv2.COLOR_BGR2GRAY))
+        half_width = 20  # or use determine_half_width if needed
 
-        straightened, worm_length = straighten_worm(cropped_worm, backbone_cp_adjusted, half_width=local_half_width)
-        if DEBUG_MODE and straightened is not None:
-            print(f"Straightened worm length: {worm_length} pixels.")
-        elif straightened is None:
+        straightened, worm_length = straighten_worm(cropped_worm, backbone_cp_adjusted, half_width=half_width, parent=parent)
+        if straightened is not None:
+            if not OriginalSetting and mapping is not None:
+                # Construct inverse mapping
+                inverse_mapping = np.zeros(256, dtype=np.uint8)
+                for t in range(256):
+                    diff = np.abs(mapping.astype(int) - t)
+                    i = np.argmin(diff)
+                    inverse_mapping[t] = i
+
+                # Apply inverse mapping
+                if straightened.ndim == 3 and straightened.shape[2] == 3:
+                    b, g, r = cv2.split(straightened)
+                    b_restored = cv2.LUT(b, inverse_mapping)
+                    g_restored = cv2.LUT(g, inverse_mapping)
+                    r_restored = cv2.LUT(r, inverse_mapping)
+                    straightened = cv2.merge([b_restored, g_restored, r_restored])
+                else:
+                    straightened = cv2.LUT(straightened, inverse_mapping)
+
+                display_results("Final Straightened Worm with Original Intensity", straightened, scale=2, parent=parent)
+            else:
+                display_results("Final Straightened Worm (No Intensity Change)", straightened, scale=2, parent=parent)
+
             if DEBUG_MODE:
-                print("Straightened worm is None or empty.")
+                print(f"Final worm length: {worm_length} pixels.")
+        else:
+            if DEBUG_MODE:
+                print("Straightened worm is None.")
     else:
         if DEBUG_MODE:
-            print("No valid backbone could be computed.")
+            print("No valid backbone computed.")
         messagebox.showerror("Error", "Backbone computation failed.")
 
 def load_video():
