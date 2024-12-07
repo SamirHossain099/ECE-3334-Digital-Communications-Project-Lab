@@ -31,7 +31,7 @@ def histogram_matching_from_images(image1_path, image2_path, image3):
     cdf1 = np.cumsum(hist1)
     cdf2 = np.cumsum(hist2)
     cdf3 = np.cumsum(hist3)
-
+    
     # Identify the mismatched histogram using the Kolmogorov-Smirnov test
     ks1 = ks_2samp(hist1, hist3).statistic
     ks2 = ks_2samp(hist2, hist3).statistic
